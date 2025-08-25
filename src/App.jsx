@@ -60,7 +60,20 @@ const NODE_TYPES = [
 // Mantido como você pediu (sem lista completa)
 const CLASSES_5E = [
   { value: "Gunslinger", label: "Pistoleiro" },
+  { value: "Barbarian", label: "Bárbaro" },
+  { value: "Bard", label: "Bardo" },
+  { value: "Cleric", label: "Clérigo" },
+  { value: "Druid", label: "Druida" },
   { value: "Fighter", label: "Guerreiro" },
+  { value: "Monk", label: "Monge" },
+  { value: "Paladin", label: "Paladino" },
+  { value: "Ranger", label: "Patrulheiro" },
+  { value: "Rogue", label: "Ladino" },
+  { value: "Sorcerer", label: "Feiticeiro" },
+  { value: "Warlock", label: "Bruxo" },
+  { value: "Wizard", label: "Mago" },
+  { value: "Artificer", label: "Artífice" },
+  { value: "Other", label: "Outra" },
 ];
 
 const ACTION_TYPES = [
