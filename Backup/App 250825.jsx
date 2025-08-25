@@ -1,4 +1,3 @@
-
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
   Background,
@@ -15,14 +14,13 @@ import 'reactflow/dist/style.css';
 
 /**
  * ============================================
- * Skill Tree D&D + Inventory (com Editor dobrável)
+ * Skill Tree D&D + Inventory (uma única página)
  * ============================================
  * - Mantém toda a funcionalidade da Árvore.
- * - Página "Inventário" agora mostra a lista por padrão.
- * - Formulário de adicionar/editar NÃO fica fixo: abre ao clicar
- *   em "Novo Item" ou ao editar um item.
+ * - Adiciona página "Inventário" com categorias:
+ *   Armaduras, Armas/Munição, Miscelânia, Chaves, Dados.
  * - Persistência em localStorage, exportar/importar JSON,
- *   busca, filtros, ordenação, ações.
+ *   busca, filtros, ordenação, ações (equipar/sintonizar/usar/duplicar/apagar).
  */
 
 const STORAGE_KEYS = ["skill-tree-dnd-v1", "skill-tree-data-v1"];
@@ -72,7 +70,7 @@ const NODE_TYPES = [
   { value: "Other", label: "Outro" },
 ];
 
-// Mantido sem lista completa
+// Mantido como você pediu (sem lista completa)
 const CLASSES_5E = [
   { value: "Gunslinger", label: "Pistoleiro" },
   { value: "Barbarian", label: "Bárbaro" },
@@ -173,7 +171,7 @@ const ITEM_CATEGORIES = [
   { value: "weapon", label: "Armas / Munição" },
   { value: "misc", label: "Miscelânia" },
   { value: "keys", label: "Chaves" },
-  { value: "dice", label: "Dados / Fichas" },
+  { value: "dice", label: "Dados" },
 ];
 
 const ARMOR_TYPES = [
@@ -195,6 +193,7 @@ const currencyToGp = (value, unit) => {
   }
 };
 const gpToPretty = (gp) => {
+  // Representa preferindo gp, sp, cp
   if (gp >= 1) return `${(+gp).toFixed(2)} gp`;
   if (gp >= 0.1) return `${(gp * 10).toFixed(0)} sp`;
   return `${(gp * 100).toFixed(0)} cp`;
@@ -216,7 +215,7 @@ function InventoryManager({ isDark }) {
   const [sortDir, setSortDir] = useState("asc");
   const [selectedIds, setSelectedIds] = useState([]);
 
-  // Formulário de novo/edição (dobrável)
+  // Formulário de novo/edição
   const emptyForm = useMemo(() => ({
     id: null,
     name: "",
@@ -239,7 +238,7 @@ function InventoryManager({ isDark }) {
     range: "",
     ammoCurrent: 0,
     ammoMax: 0,
-    // Dados/Fichas
+    // Dados
     die: "d6",
     dieCount: 0,
     label: "",
@@ -249,14 +248,12 @@ function InventoryManager({ isDark }) {
   }), []);
 
   const [form, setForm] = useState(emptyForm);
-  const [showEditor, setShowEditor] = useState(false);
 
   useEffect(() => {
     try { localStorage.setItem(INVENTORY_KEY, JSON.stringify(items)); } catch {}
   }, [items]);
 
-  const openNew = () => { setForm(emptyForm); setShowEditor(true); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  const cancelEdit = () => { setForm(emptyForm); setShowEditor(false); };
+  const resetForm = () => setForm(emptyForm);
 
   const onSubmit = (e) => {
     e?.preventDefault?.();
@@ -279,8 +276,7 @@ function InventoryManager({ isDark }) {
       if (exists) return arr.map((x) => (x.id === id ? base : x));
       return [base, ...arr];
     });
-    setShowEditor(false);
-    setForm(emptyForm);
+    resetForm();
   };
 
   const editItem = (it) => {
@@ -291,7 +287,6 @@ function InventoryManager({ isDark }) {
       valueUnit: it.valueUnit || "gp",
       tags: it.tags || [],
     });
-    setShowEditor(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -505,10 +500,6 @@ function InventoryManager({ isDark }) {
         </div>
 
         <div className="ml-auto flex gap-2">
-          <button onClick={openNew} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
-            + Novo Item
-          </button>
-
           <div className="relative group">
             <button className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white">+ Template</button>
             <div className={cx(
@@ -539,297 +530,280 @@ function InventoryManager({ isDark }) {
         </div>
       </div>
 
-      {/* Editor dobrável */}
-      {showEditor && (
-        <form onSubmit={onSubmit} className="px-3 pb-2">
-          <div className={cx("rounded-2xl border p-3 grid gap-3",
-            isDark ? "bg-zinc-950 border-zinc-800" : "bg-white border-slate-200")}>
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">{form.id ? "Editar Item" : "Novo Item"}</h3>
-              <button type="button" onClick={cancelEdit} className={cx("px-2 py-1 rounded-md border text-sm",
-                isDark ? "bg-zinc-900 border-zinc-700 hover:bg-zinc-800" : "bg-white border-slate-300 hover:bg-slate-50")}>
-                Fechar
-              </button>
-            </div>
+      {/* Formulário */}
+      <form onSubmit={onSubmit} className="px-3 pb-2">
+        <div className={cx("rounded-2xl border p-3 grid gap-3",
+          isDark ? "bg-zinc-950 border-zinc-800" : "bg-white border-slate-200")}>
+          <div className="grid md:grid-cols-3 gap-3">
+            <label className="text-sm">
+              Nome
+              <input
+                className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                  isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                required
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Ex.: Espada Longa"
+              />
+            </label>
 
-            <div className="grid md:grid-cols-3 gap-3">
-              <label className="text-sm">
-                Nome
+            <label className="text-sm">
+              Categoria
+              <select
+                className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                  isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                value={form.category}
+                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+              >
+                {ITEM_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </label>
+
+            <label className="text-sm">
+              Tags (vírgulas)
+              <input
+                className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                  isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                value={Array.isArray(form.tags) ? formatTags(form.tags) : form.tags}
+                onChange={(e) => setForm((f) => ({ ...f, tags: parseTags(e.target.value) }))}
+                placeholder="mágico, prata, sagrado"
+              />
+            </label>
+          </div>
+
+          <div className="grid md:grid-cols-4 gap-3">
+            <label className="text-sm">
+              Quantidade
+              <input
+                type="number" min={0}
+                className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                  isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                value={form.qty}
+                onChange={(e) => setForm((f) => ({ ...f, qty: Number(e.target.value) }))}
+              />
+            </label>
+            <label className="text-sm">
+              Peso (lb) por unidade
+              <input
+                type="number" min={0} step="0.1"
+                className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                  isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                value={form.weight}
+                onChange={(e) => setForm((f) => ({ ...f, weight: Number(e.target.value) }))}
+              />
+            </label>
+            <label className="text-sm">
+              Valor
+              <div className="flex gap-2">
                 <input
+                  type="number" min={0} step="0.01"
                   className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                     isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="Ex.: Espada Longa"
+                  value={form.valueNum}
+                  onChange={(e) => setForm((f) => ({ ...f, valueNum: e.target.value }))}
                 />
-              </label>
+                <select
+                  className={cx("mt-1 w-24 border rounded-md px-2 py-1.5",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                  value={form.valueUnit}
+                  onChange={(e) => setForm((f) => ({ ...f, valueUnit: e.target.value }))}
+                >
+                  <option>gp</option><option>sp</option><option>cp</option><option>pp</option><option>ep</option>
+                </select>
+              </div>
+            </label>
 
+            <div className="flex gap-2 items-end">
+              <label className="text-sm flex items-center gap-2">
+                <input type="checkbox" checked={form.equipped} onChange={() => setForm((f) => ({ ...f, equipped: !f.equipped }))}/>
+                Equipado
+              </label>
+              <label className="text-sm flex items-center gap-2">
+                <input type="checkbox" checked={form.attuned} onChange={() => setForm((f) => ({ ...f, attuned: !f.attuned }))}/>
+                Sintonizado
+              </label>
+            </div>
+          </div>
+
+          {/* Campos específicos por categoria */}
+          {form.category === "armor" && (
+            <div className={cx("rounded-lg p-3 grid md:grid-cols-4 gap-3",
+              isDark ? "border border-zinc-800" : "border border-slate-200")}>
               <label className="text-sm">
-                Categoria
+                Tipo de Armadura
                 <select
                   className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                     isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                  value={form.category}
-                  onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                  value={form.armorType}
+                  onChange={(e) => setForm((f) => ({ ...f, armorType: e.target.value }))}
                 >
-                  {ITEM_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  {ARMOR_TYPES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
                 </select>
               </label>
-
               <label className="text-sm">
-                Tags (vírgulas)
-                <input
-                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                  value={Array.isArray(form.tags) ? formatTags(form.tags) : form.tags}
-                  onChange={(e) => setForm((f) => ({ ...f, tags: parseTags(e.target.value) }))}
-                  placeholder="mágico, prata, sagrado"
-                />
-              </label>
-            </div>
-
-            <div className="grid md:grid-cols-4 gap-3">
-              <label className="text-sm">
-                Quantidade
+                CA (AC)
                 <input
                   type="number" min={0}
                   className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                     isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                  value={form.qty}
-                  onChange={(e) => setForm((f) => ({ ...f, qty: Number(e.target.value) }))}
+                  value={form.ac}
+                  onChange={(e) => setForm((f) => ({ ...f, ac: Number(e.target.value) }))}
                 />
               </label>
               <label className="text-sm">
-                Peso (lb) por unidade
+                Força mín.
                 <input
-                  type="number" min={0} step="0.1"
+                  type="number" min={0}
                   className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                     isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                  value={form.weight}
-                  onChange={(e) => setForm((f) => ({ ...f, weight: Number(e.target.value) }))}
+                  value={form.strReq}
+                  onChange={(e) => setForm((f) => ({ ...f, strReq: Number(e.target.value) }))}
+                />
+              </label>
+              <label className="text-sm flex items-center gap-2">
+                <input type="checkbox" checked={form.stealthDisadv} onChange={() => setForm((f) => ({ ...f, stealthDisadv: !f.stealthDisadv }))}/>
+                Desvantagem em Furtividade
+              </label>
+            </div>
+          )}
+
+          {form.category === "weapon" && (
+            <div className={cx("rounded-lg p-3 grid md:grid-cols-4 gap-3",
+              isDark ? "border border-zinc-800" : "border border-slate-200")}>
+              <label className="text-sm md:col-span-2">
+                Dano
+                <input
+                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                  value={form.damage}
+                  onChange={(e) => setForm((f) => ({ ...f, damage: e.target.value }))}
+                  placeholder="ex.: 1d8 perfurante"
+                />
+              </label>
+              <label className="text-sm md:col-span-2">
+                Alcance
+                <input
+                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                  value={form.range}
+                  onChange={(e) => setForm((f) => ({ ...f, range: e.target.value }))}
+                  placeholder="ex.: corpo-a-corpo, 80/320"
                 />
               </label>
               <label className="text-sm">
-                Valor
-                <div className="flex gap-2">
-                  <input
-                    type="number" min={0} step="0.01"
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.valueNum}
-                    onChange={(e) => setForm((f) => ({ ...f, valueNum: e.target.value }))}
-                  />
-                  <select
-                    className={cx("mt-1 w-24 border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.valueUnit}
-                    onChange={(e) => setForm((f) => ({ ...f, valueUnit: e.target.value }))}
-                  >
-                    <option>gp</option><option>sp</option><option>cp</option><option>pp</option><option>ep</option>
-                  </select>
-                </div>
+                Munição atual
+                <input
+                  type="number" min={0}
+                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                  value={form.ammoCurrent}
+                  onChange={(e) => setForm((f) => ({ ...f, ammoCurrent: Number(e.target.value) }))}
+                />
               </label>
-
-              <div className="flex gap-2 items-end">
-                <label className="text-sm flex items-center gap-2">
-                  <input type="checkbox" checked={form.equipped} onChange={() => setForm((f) => ({ ...f, equipped: !f.equipped }))}/>
-                  Equipado
-                </label>
-                <label className="text-sm flex items-center gap-2">
-                  <input type="checkbox" checked={form.attuned} onChange={() => setForm((f) => ({ ...f, attuned: !f.attuned }))}/>
-                  Sintonizado
-                </label>
-              </div>
+              <label className="text-sm">
+                Munição máx.
+                <input
+                  type="number" min={0}
+                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                  value={form.ammoMax}
+                  onChange={(e) => setForm((f) => ({ ...f, ammoMax: Number(e.target.value) }))}
+                />
+              </label>
             </div>
+          )}
 
-            {/* Campos específicos por categoria */}
-            {form.category === "armor" && (
-              <div className={cx("rounded-lg p-3 grid md:grid-cols-4 gap-3",
-                isDark ? "border border-zinc-800" : "border border-slate-200")}>
-                <label className="text-sm">
-                  Tipo de Armadura
-                  <select
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.armorType}
-                    onChange={(e) => setForm((f) => ({ ...f, armorType: e.target.value }))}
-                  >
-                    {ARMOR_TYPES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
-                  </select>
-                </label>
-                <label className="text-sm">
-                  CA (AC)
-                  <input
-                    type="number" min={0}
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.ac}
-                    onChange={(e) => setForm((f) => ({ ...f, ac: Number(e.target.value) }))}
-                  />
-                </label>
-                <label className="text-sm">
-                  Força mín.
-                  <input
-                    type="number" min={0}
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.strReq}
-                    onChange={(e) => setForm((f) => ({ ...f, strReq: Number(e.target.value) }))}
-                  />
-                </label>
-                <label className="text-sm flex items-center gap-2">
-                  <input type="checkbox" checked={form.stealthDisadv} onChange={() => setForm((f) => ({ ...f, stealthDisadv: !f.stealthDisadv }))}/>
-                  Desvantagem em Furtividade
-                </label>
-              </div>
-            )}
+          {form.category === "dice" && (
+            <div className={cx("rounded-lg p-3 grid md:grid-cols-3 gap-3",
+              isDark ? "border border-zinc-800" : "border border-slate-200")}>
+              <label className="text-sm">
+                Tipo (d4, d6, d8, d10, d12, d20, token)
+                <input
+                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                  value={form.die}
+                  onChange={(e) => setForm((f) => ({ ...f, die: e.target.value }))}
+                />
+              </label>
+              <label className="text-sm">
+                Quantidade de Dados
+                <input
+                  type="number" min={0}
+                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                  value={form.dieCount}
+                  onChange={(e) => setForm((f) => ({ ...f, dieCount: Number(e.target.value) }))}
+                />
+              </label>
+              <label className="text-sm">
+                Rótulo
+                <input
+                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                  value={form.label}
+                  onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+                  placeholder="ex.: Inspiração, Dado de Risco"
+                />
+              </label>
+            </div>
+          )}
 
-            {form.category === "weapon" && (
-              <div className={cx("rounded-lg p-3 grid md:grid-cols-4 gap-3",
-                isDark ? "border border-zinc-800" : "border border-slate-200")}>
-                <label className="text-sm md:col-span-2">
-                  Dano
-                  <input
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.damage}
-                    onChange={(e) => setForm((f) => ({ ...f, damage: e.target.value }))}
-                    placeholder="ex.: 1d8 perfurante"
-                  />
-                </label>
-                <label className="text-sm md:col-span-2">
-                  Alcance
-                  <input
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.range}
-                    onChange={(e) => setForm((f) => ({ ...f, range: e.target.value }))}
-                    placeholder="ex.: corpo-a-corpo, 80/320"
-                  />
-                </label>
-                <label className="text-sm">
-                  Munição atual
-                  <input
-                    type="number" min={0}
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.ammoCurrent}
-                    onChange={(e) => setForm((f) => ({ ...f, ammoCurrent: Number(e.target.value) }))}
-                  />
-                </label>
-                <label className="text-sm">
-                  Munição máx.
-                  <input
-                    type="number" min={0}
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.ammoMax}
-                    onChange={(e) => setForm((f) => ({ ...f, ammoMax: Number(e.target.value) }))}
-                  />
-                </label>
-              </div>
-            )}
+          {form.category === "keys" && (
+            <div className={cx("rounded-lg p-3 grid md:grid-cols-2 gap-3",
+              isDark ? "border border-zinc-800" : "border border-slate-200")}>
+              <label className="text-sm">
+                Onde abre
+                <input
+                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                  value={form.keyWhere}
+                  onChange={(e) => setForm((f) => ({ ...f, keyWhere: e.target.value }))}
+                  placeholder="Ex.: Porta da cripta"
+                />
+              </label>
+              <label className="text-sm">
+                Finalidade / Observações
+                <input
+                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                  value={form.keyUse}
+                  onChange={(e) => setForm((f) => ({ ...f, keyUse: e.target.value }))}
+                  placeholder="Ex.: Abre cadeado grande"
+                />
+              </label>
+            </div>
+          )}
 
-            {form.category === "dice" && (
-              <div className={cx("rounded-lg p-3 grid md:grid-cols-3 gap-3",
-                isDark ? "border border-zinc-800" : "border border-slate-200")}>
-                <label className="text-sm">
-                  Tipo (d4, d6, d8, d10, d12, d20, token)
-                  <input
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.die}
-                    onChange={(e) => setForm((f) => ({ ...f, die: e.target.value }))}
-                  />
-                </label>
-                <label className="text-sm">
-                  Quantidade de dados/fichas
-                  <input
-                    type="number" min={0}
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.dieCount}
-                    onChange={(e) => setForm((f) => ({ ...f, dieCount: Number(e.target.value) }))}
-                  />
-                </label>
-                <label className="text-sm">
-                  Rótulo
-                  <input
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.label}
-                    onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
-                    placeholder="ex.: Inspiração, Dado de Risco"
-                  />
-                </label>
-              </div>
-            )}
+          <label className="text-sm">
+            Notas
+            <textarea
+              className={cx("mt-1 w-full border rounded-md px-2 py-1.5 min-h-[70px]",
+                isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              placeholder="Anotações, propriedades especiais, origem, etc."
+            />
+          </label>
 
-            {form.category === "keys" && (
-              <div className={cx("rounded-lg p-3 grid md:grid-cols-2 gap-3",
-                isDark ? "border border-zinc-800" : "border border-slate-200")}>
-                <label className="text-sm">
-                  Onde abre
-                  <input
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.keyWhere}
-                    onChange={(e) => setForm((f) => ({ ...f, keyWhere: e.target.value }))}
-                    placeholder="Ex.: Porta da cripta"
-                  />
-                </label>
-                <label className="text-sm">
-                  Finalidade / Observações
-                  <input
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.keyUse}
-                    onChange={(e) => setForm((f) => ({ ...f, keyUse: e.target.value }))}
-                    placeholder="Ex.: Abre cadeado grande"
-                  />
-                </label>
-              </div>
-            )}
-
-            <label className="text-sm">
-              Notas
-              <textarea
-                className={cx("mt-1 w-full border rounded-md px-2 py-1.5 min-h-[70px]",
-                  isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                value={form.notes}
-                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                placeholder="Anotações, propriedades especiais, origem, etc."
-              />
-            </label>
-
-            <div className="flex gap-2 justify-end">
-              {form.id && (
-                <button
-                  type="button"
-                  onClick={() => setForm(emptyForm)}
-                  className="px-3 py-1.5 rounded-lg border"
-                >
-                  Limpar
-                </button>
-              )}
+          <div className="flex gap-2 justify-end">
+            {form.id && (
               <button
                 type="button"
-                onClick={cancelEdit}
+                onClick={resetForm}
                 className="px-3 py-1.5 rounded-lg border"
               >
-                Cancelar
+                Cancelar edição
               </button>
-              <button
-                type="submit"
-                className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
-              >
-                {form.id ? "Salvar item" : "Adicionar item"}
-              </button>
-            </div>
+            )}
+            <button
+              type="submit"
+              className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+            >
+              {form.id ? "Salvar item" : "Adicionar item"}
+            </button>
           </div>
-        </form>
-      )}
+        </div>
+      </form>
 
       {/* Totais */}
       <div className="px-3 pb-2">
@@ -872,7 +846,7 @@ function InventoryManager({ isDark }) {
             if (x.ammoMax) props.push(`Munição ${x.ammoCurrent || 0}/${x.ammoMax}`);
           }
           if (x.category === "dice") {
-            props.push(`${x.label || "Fichas/Dados"}: ${x.dieCount} ${x.die}`);
+            props.push(`${x.label || "Fichas"}: ${x.dieCount} ${x.die}`);
           }
           if (x.category === "keys") {
             if (x.keyWhere) props.push(`Local: ${x.keyWhere}`);
@@ -1002,7 +976,7 @@ function InventoryManager({ isDark }) {
   );
 }
 
-// ====================== Árvore (mesmo core) ======================
+// ====================== Árvore (mesmo código de antes) ======================
 function buildGraph(nodes, edges) {
   const adj = new Map();
   const indeg = new Map();
@@ -1419,9 +1393,9 @@ export default function SkillTreeBuilderDnd() {
       }
 
       if (k === "m") setShowMiniMap((v) => !v);
-      if (k === "_" ) addSkill();
-      if (k === "{" || k === "a") autoLayout();
-      if (k === "}" || k === "f") fit();
+      if (k === "_") addSkill();
+      if (k === "{") autoLayout();
+      if (k === "}") fit();
 
       if ((e.ctrlKey || e.metaKey) && k === "s") {
         e.preventDefault();
