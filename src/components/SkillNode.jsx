@@ -1,8 +1,8 @@
 import { cx, getLabel } from "../utils/misc";
 import React from "react";
 import { Handle, Position } from "reactflow";
-import { NODE_TYPES, CLASSES_5E } from "../constants/dnd"; // se o JSX usa esses dados
-
+import { NODE_TYPES, CLASSES_5E } from "../constants/dnd";
+import { t } from "../utils/i18n";
 
 const SkillNode = React.memo(function SkillNode({ data, selected }) {
   const { name, color, type, dndClass, levelReq, prereqMode, shortText } = data || {};
@@ -32,12 +32,12 @@ const SkillNode = React.memo(function SkillNode({ data, selected }) {
         <div className="flex flex-wrap gap-2 text-[11px]">
           <span className={badge}>{getLabel(NODE_TYPES, type || "Feat")}</span>
           {dndClass ? <span className={badge}>{getLabel(CLASSES_5E, dndClass)}</span> : null}
-          <span className={badge}>{prereqMode === "any" ? "Pré-req: qualquer um" : "Pré-req: todos"}</span>
+          <span className={badge}>{t("prereqMode")}: {prereqMode === "any" ? t("any") : t("all")}</span>
         </div>
         {shortText ? (
           <p className={cx("text-xs line-clamp-3", isDark ? "text-zinc-300" : "text-gray-600")}>{shortText}</p>
         ) : (
-          <p className={cx("text-xs italic", isDark ? "text-zinc-500" : "text-gray-400")}>Sem resumo</p>
+          <p className={cx("text-xs italic", isDark ? "text-zinc-500" : "text-gray-400")}>{t("none")}</p>
         )}
       </div>
 

@@ -5,6 +5,7 @@ import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY } from "./constants/st
 import { NODE_TYPES, CLASSES_5E, ACTION_TYPES, USES_TYPES } from "./constants/dnd";
 import { cx, uid, download, parseTags, formatTags, getLabel } from "./utils/misc";
 import { buildGraph, detectCycle, topologicalLayers } from "./utils/graph";
+import { t, getLang, setLang } from "./utils/i18n";
 import ReactFlow, {
   Background,
   Controls,
@@ -17,19 +18,6 @@ import ReactFlow, {
   Position,
 } from "reactflow";
 import 'reactflow/dist/style.css';
-
-/**
- * ============================================
- * Skill Tree D&D + Inventory (com Editor dobrável)
- * ============================================
- * - Mantém toda a funcionalidade da Árvore.
- * - Página "Inventário" agora mostra a lista por padrão.
- * - Formulário de adicionar/editar NÃO fica fixo: abre ao clicar
- *   em "Novo Item" ou ao editar um item.
- * - Persistência em localStorage, exportar/importar JSON,
- *   busca, filtros, ordenação, ações.
- */
-// ====================== NÓ da Árvore ======================
 
 const nodeTypes = { skill: SkillNode };
 
@@ -432,7 +420,7 @@ export default function SkillTreeBuilderDnd() {
                   : "bg-white/90 border-slate-200 hover:bg-slate-50"
             )}
           >
-            🌳 Árvore
+            🌳 {t("tree")}
           </button>
           <button
             onClick={() => setPage("inventory")}
@@ -445,7 +433,7 @@ export default function SkillTreeBuilderDnd() {
                   : "bg-white/90 border-slate-200 hover:bg-slate-50"
             )}
           >
-            📦 Inventário
+            📦 {t("inventory")}
           </button>
         </div>
 
@@ -463,7 +451,7 @@ export default function SkillTreeBuilderDnd() {
               aria-expanded={showTopPanel}
               aria-pressed={showTopPanel}
             >
-              ☰ Menu
+              ☰ {t("menu")}
             </button>
 
             <button
@@ -477,7 +465,7 @@ export default function SkillTreeBuilderDnd() {
               aria-expanded={showRightPanel}
               aria-pressed={showRightPanel}
             >
-              🧰 Painel
+              🧰 {t("panel")}
             </button>
           </div>
         )}
@@ -491,8 +479,17 @@ export default function SkillTreeBuilderDnd() {
                     : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50"
           )}
         >
-          {isDark ? "☀️ Claro" : "🌙 Escuro"}
+          {isDark ? "🌙 Escuro" : "☀️ Claro"}
         </button>
+        <select
+            value={getLang()}
+            onChange={(e) => setLang(e.target.value)}
+            className="px-2 py-1.5 rounded-lg border"
+            title={t("language")}
+          >
+            <option value="pt">PT-BR</option>
+            <option value="en">EN</option>
+          </select>
       </div>
 
       {/* Menu suspenso da Árvore */}
@@ -505,11 +502,11 @@ export default function SkillTreeBuilderDnd() {
           )}
         >
           <button onClick={() => addSkill()} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
-            + Nó D&D
+            {t("addNode")}
           </button>
 
           <div className="relative group">
-            <button className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white">+ Pacote Exemplo</button>
+            <button className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white">{t("examplePack")}</button>
             <div
               className={cx(
                 "absolute mt-1 hidden group-hover:block border rounded-lg shadow p-2 text-sm min-w-[220px]",
@@ -578,13 +575,13 @@ export default function SkillTreeBuilderDnd() {
           </div>
 
           <button onClick={autoLayout} className="px-3 py-1.5 rounded-lg bg-sky-700 text-white hover:bg-sky-800">
-            Layout automático
+            {t("autoLayout")}
           </button>
           <button onClick={validate} className="px-3 py-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700">
-            Validar
+            {t("Validate")}
           </button>
           <button onClick={fit} className="px-3 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-900">
-            Ajustar visão
+            {t("fit")}
           </button>
 
           <button
@@ -598,13 +595,13 @@ export default function SkillTreeBuilderDnd() {
           </button>
 
           <button onClick={exportJSON} className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">
-            Exportar JSON
+            {t("exportJSON")}
           </button>
           <button onClick={exportMarkdown} className="px-3 py-1.5 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800">
-            Exportar Markdown
+            {t("exportMD")}
           </button>
           <label className="px-3 py-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700 cursor-pointer">
-            Importar JSON
+            {t("importJSON")}
             <input
               type="file"
               accept="application/json"
@@ -613,7 +610,7 @@ export default function SkillTreeBuilderDnd() {
             />
           </label>
           <button onClick={clearAll} className="px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700">
-            Limpar
+            {t("clear")}
           </button>
           <button
             onClick={() => {
@@ -630,14 +627,14 @@ export default function SkillTreeBuilderDnd() {
             className="px-3 py-1.5 rounded-lg bg-violet-600 text-white hover:bg-violet-700"
             disabled={!selectedNodeId}
           >
-            Duplicar nó
+            {t("duplicateNode")}
           </button>
           <button
             onClick={deleteSelectedEdges}
             disabled={!selectedEdgeIds.length}
             className="px-3 py-1.5 rounded-lg bg-red-700 text-white hover:bg-red-800 disabled:opacity-50"
           >
-            Excluir ligações
+            {t("deleteEdges")}
           </button>
           <div
             className={cx(
@@ -650,7 +647,7 @@ export default function SkillTreeBuilderDnd() {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusFirstMatch(); } }}
-              placeholder="Buscar nome/tags/tipo..."
+              placeholder={t("searchPlaceholder")}
               className={cx(
                 "px-3 py-1.5 rounded-lg border flex-1",
                 isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100 placeholder-zinc-500" : "bg-white border-slate-200"
@@ -746,12 +743,12 @@ export default function SkillTreeBuilderDnd() {
                       onClick={deleteSelectedNode}
                       className="px-2 py-1 rounded-md bg-red-600 text-white text-sm hover:bg-red-700"
                     >
-                      Excluir
+                      {t("delete")}
                     </button>
                   </div>
 
                   <label className="text-sm">
-                    Nome
+                    {t("name")}
                     <input
                       className={cx(
                         "mt-1 w-full border rounded-md px-2 py-1.5",
@@ -765,7 +762,7 @@ export default function SkillTreeBuilderDnd() {
 
                   <div className="grid grid-cols-2 gap-2">
                     <label className="text-sm">
-                      Tipo
+                      {t("type")}
                       <select
                         className={cx(
                           "mt-1 w-full border rounded-md px-2 py-1.5",
@@ -782,7 +779,7 @@ export default function SkillTreeBuilderDnd() {
                       </select>
                     </label>
                     <label className="text-sm">
-                      Classe (opcional)
+                      {t("class")}
                       <select
                         className={cx(
                           "mt-1 w-full border rounded-md px-2 py-1.5",
@@ -802,7 +799,7 @@ export default function SkillTreeBuilderDnd() {
 
                   <div className="grid grid-cols-3 gap-2 items-end">
                     <label className="text-sm col-span-2">
-                      Resumo curto
+                      {t("shortText")}
                       <input
                         className={cx(
                           "mt-1 w-full border rounded-md px-2 py-1.5",
@@ -814,7 +811,7 @@ export default function SkillTreeBuilderDnd() {
                       />
                     </label>
                     <label className="text-sm">
-                      Nível mín.
+                      {t("minLevel")}
                       <input
                         type="number"
                         min={1}
@@ -830,7 +827,7 @@ export default function SkillTreeBuilderDnd() {
                   </div>
 
                   <label className="text-sm">
-                    Descrição
+                    {t("description")}
                     <textarea
                       className={cx(
                         "mt-1 w-full border rounded-md px-2 py-1.5 min-h-[100px]",
@@ -844,7 +841,7 @@ export default function SkillTreeBuilderDnd() {
 
                   <div className={cx("border rounded-lg p-3", isDark ? "border-zinc-800" : "border-slate-200")}>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Pré-req. de Atributos</span>
+                      <span className="text-sm font-medium">{t("abilityReqs")}</span>
                       <span className={cx("text-xs", isDark ? "text-zinc-400" : "text-gray-500")}>(0 = nenhum)</span>
                     </div>
                     <div className="grid grid-cols-6 gap-2 text-center">
@@ -873,7 +870,7 @@ export default function SkillTreeBuilderDnd() {
 
                   <div className="grid grid-cols-2 gap-2">
                     <label className="text-sm">
-                      Economia de Ação
+                      {t("actionEconomy")}
                       <select
                         className={cx(
                           "mt-1 w-full border rounded-md px-2 py-1.5",
@@ -890,7 +887,7 @@ export default function SkillTreeBuilderDnd() {
                       </select>
                     </label>
                     <label className="text-sm">
-                      Usos
+                      {t("uses")}
                       <select
                         className={cx(
                           "mt-1 w-full border rounded-md px-2 py-1.5",

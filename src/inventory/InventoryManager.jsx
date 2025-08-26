@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY } from "../constants/storage";
 import { ITEM_CATEGORIES, ARMOR_TYPES } from "../constants/dnd";
 import { cx, uid, parseTags, formatTags, getLabel, download } from "../utils/misc";
+import { t, getLang, setLang } from "../utils/i18n";
 
 const currencyToGp = (value, unit) => {
   const v = Number(value || 0);
@@ -118,7 +119,7 @@ function InventoryManager({ isDark }) {
   const duplicateItem = (id) => {
     const it = items.find((x) => x.id === id);
     if (!it) return;
-    const copy = { ...it, id: uid(), name: it.name + " (cópia)" };
+    const copy = { ...it, id: uid(), name: it.name + " (copy)" };
     setItems((arr) => [copy, ...arr]);
   };
 
@@ -151,23 +152,23 @@ function InventoryManager({ isDark }) {
         qty: 1,
         weight: 2,
         valueNum: 25, valueUnit: "gp",
-        damage: "1d8 perfurante",
-        range: "corpo-a-corpo (finesse)",
-        tags: ["finesse", "leve"],
+        damage: "1d8 piercing",
+        range: "melee (finesse)",
+        tags: ["finesse", "light"],
       },
       "longbow": {
-        name: "Arco Longo + Flechas (20)",
+        name: "Longbow + Arrows (20)",
         category: "weapon",
         qty: 1,
         weight: 2,
         valueNum: 50, valueUnit: "gp",
-        damage: "1d8 perfurante",
-        range: "distância 150/600",
+        damage: "1d8 piercing",
+        range: "range 150/600",
         ammoCurrent: 20, ammoMax: 20,
-        tags: ["duas-mãos", "munição"],
+        tags: ["two-handed", "ammunition"],
       },
       "chainmail": {
-        name: "Cota de Malha",
+        name: "Chain Mail",
         category: "armor",
         armorType: "heavy",
         ac: 16,
@@ -178,27 +179,27 @@ function InventoryManager({ isDark }) {
         valueNum: 75, valueUnit: "gp",
       },
       "lockpick": {
-        name: "Ferramentas de Ladrão",
+        name: "Thieves’ Tools",
         category: "misc",
         qty: 1,
         weight: 1,
         valueNum: 25, valueUnit: "gp",
-        tags: ["ferramenta"],
+        tags: ["tool"],
       },
       "key": {
-        name: "Chave enferrujada",
+        name: "Rusty Key",
         category: "keys",
         qty: 1,
         weight: 0,
-        keyWhere: "Porta da cripta antiga",
-        keyUse: "Abre o cadeado grande",
+        keyWhere: "Old crypt door",
+        keyUse: "Opens the big padlock",
       },
       "inspiration": {
-        name: "Inspiração",
+        name: "Inspiration",
         category: "dice",
         die: "token",
         dieCount: 1,
-        label: "Marcador de Inspiração",
+        label: "Inspiration Marker",
         qty: 1,
         weight: 0,
       },
@@ -226,33 +227,25 @@ function InventoryManager({ isDark }) {
           const cleaned = parsed.items.map((x) => ({ ...x, id: x.id || uid() }));
           setItems(cleaned);
         } else {
-          alert("JSON inválido. Esperado { items: [...] }");
+          alert("Invalid JSON. Expected { items: [...] }");
         }
       } catch {
-        alert("Não foi possível ler o JSON.");
+        alert("Unable to read JSON.");
       }
     };
     reader.readAsText(file);
   };
 
   const filtered = useMemo(() => {
-    const t = (filterText || "").toLowerCase();
+    const tSearch = (filterText || "").toLowerCase();
     let out = items.filter((x) => {
       const byCat = filterCat === "all" || x.category === filterCat;
       if (!byCat) return false;
-      if (!t) return true;
+      if (!tSearch) return true;
       const hay = [
-        x.name,
-        x.category,
-        (x.tags || []).join(" "),
-        x.notes,
-        x.damage,
-        x.range,
-        x.keyWhere,
-        x.keyUse,
-        x.label
+        x.name, x.category, (x.tags || []).join(" "), x.notes, x.damage, x.range, x.keyWhere, x.keyUse, x.label
       ].join(" ").toLowerCase();
-      return hay.includes(t);
+      return hay.includes(tSearch);
     });
     const dir = sortDir === "asc" ? 1 : -1;
     out.sort((a, b) => {
@@ -276,6 +269,8 @@ function InventoryManager({ isDark }) {
     isDark ? "border-zinc-800 hover:bg-zinc-900" : "border-slate-200 hover:bg-slate-50"
   );
 
+  const lang = getLang();
+
   return (
     <div className="w-full h-screen flex flex-col">
       {/* Header de ações */}
@@ -284,7 +279,7 @@ function InventoryManager({ isDark }) {
           isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-200")}>
           <input
             className={cx("outline-none", isDark ? "bg-transparent placeholder-zinc-400" : "bg-transparent placeholder-gray-500")}
-            placeholder="Buscar no inventário..."
+            placeholder={t("searchInventory")}
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
           />
@@ -296,41 +291,52 @@ function InventoryManager({ isDark }) {
           value={filterCat}
           onChange={(e) => setFilterCat(e.target.value)}
         >
-          <option value="all">Todas categorias</option>
+          <option value="all">{t("allCategories")}</option>
           {ITEM_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
 
         <div className="flex items-center gap-1">
-          <label className="text-sm opacity-70">Ordenar por</label>
+          <label className="text-sm opacity-70">{t("sortBy")}</label>
           <select
             className={cx("px-3 py-1.5 rounded-lg border",
               isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-200")}
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
           >
-            <option value="name">Nome</option>
-            <option value="category">Categoria</option>
-            <option value="qty">Qtd</option>
-            <option value="weight">Peso</option>
-            <option value="valueGp">Valor (gp)</option>
+            <option value="name">{t("name")}</option>
+            <option value="category">{t("category")}</option>
+            <option value="qty">{t("qty")}</option>
+            <option value="weight">{t("weight")}</option>
+            <option value="valueGp">{t("totalValue")}</option>
           </select>
           <button
             className={cx("px-3 py-1.5 rounded-lg border",
               isDark ? "bg-zinc-900 border-zinc-700" : "bg-white border-slate-200")}
             onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
-            title="Alternar direção"
+            title="Toggle direction"
           >
-            {sortDir === "asc" ? "↑" : "↓"}
+            {sortDir === "asc" ? t("asc") : t("desc")}
           </button>
         </div>
 
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex items-center gap-2">
+          <select
+            value={lang}
+            onChange={(e) => setLang(e.target.value)}
+            className={cx("px-3 py-1.5 rounded-lg border",
+              isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-200")}
+            title={t("language")}
+          >
+            <option value="pt">PT-BR</option>
+            <option value="en">EN</option>
+          </select>
+
           <button onClick={openNew} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
-            + Novo Item
+            {t("newItem")}
           </button>
 
           <div className="relative group">
-            <button className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white">+ Template</button>
+            <button className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white">{t("template")}</button>
             <div className={cx(
               "absolute mt-1 hidden group-hover:block min-w-[240px] border rounded-lg p-2 text-sm z-10",
               isDark ? "bg-zinc-900 border-zinc-700" : "bg-white border-slate-200"
@@ -344,9 +350,9 @@ function InventoryManager({ isDark }) {
             </div>
           </div>
 
-          <button onClick={exportJSON} className="px-3 py-1.5 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800">Exportar JSON</button>
+          <button onClick={exportJSON} className="px-3 py-1.5 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800">{t("exportInventory")}</button>
           <label className="px-3 py-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700 cursor-pointer">
-            Importar JSON
+            {t("importInventory")}
             <input type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importJSON(e.target.files[0])} />
           </label>
           <button
@@ -354,7 +360,7 @@ function InventoryManager({ isDark }) {
             disabled={!selectedIds.length}
             className={cx("px-3 py-1.5 rounded-lg text-white hover:opacity-90 disabled:opacity-40", "bg-red-600")}
           >
-            Apagar selecionados ({selectedIds.length})
+            {t("deleteSelected")} ({selectedIds.length})
           </button>
         </div>
       </div>
@@ -365,16 +371,16 @@ function InventoryManager({ isDark }) {
           <div className={cx("rounded-2xl border p-3 grid gap-3",
             isDark ? "bg-zinc-950 border-zinc-800" : "bg-white border-slate-200")}>
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold">{form.id ? "Editar Item" : "Novo Item"}</h3>
+              <h3 className="font-semibold">{form.id ? t("editItemTitle") : t("newItemTitle")}</h3>
               <button type="button" onClick={cancelEdit} className={cx("px-2 py-1 rounded-md border text-sm",
                 isDark ? "bg-zinc-900 border-zinc-700 hover:bg-zinc-800" : "bg-white border-slate-300 hover:bg-slate-50")}>
-                Fechar
+                {t("close")}
               </button>
             </div>
 
             <div className="grid md:grid-cols-3 gap-3">
               <label className="text-sm">
-                Nome
+                {t("name")}
                 <input
                   className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                     isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
@@ -386,7 +392,7 @@ function InventoryManager({ isDark }) {
               </label>
 
               <label className="text-sm">
-                Categoria
+                {t("category")}
                 <select
                   className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                     isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
@@ -398,7 +404,7 @@ function InventoryManager({ isDark }) {
               </label>
 
               <label className="text-sm">
-                Tags (vírgulas)
+                {t("tagsComma")}
                 <input
                   className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                     isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
@@ -411,7 +417,7 @@ function InventoryManager({ isDark }) {
 
             <div className="grid md:grid-cols-4 gap-3">
               <label className="text-sm">
-                Quantidade
+                {t("qty")}
                 <input
                   type="number" min={0}
                   className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
@@ -421,7 +427,7 @@ function InventoryManager({ isDark }) {
                 />
               </label>
               <label className="text-sm">
-                Peso (lb) por unidade
+                {t("weight")} {`(${t("weight").includes("lb") ? "" : "(lb)"}`}
                 <input
                   type="number" min={0} step="0.1"
                   className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
@@ -431,7 +437,7 @@ function InventoryManager({ isDark }) {
                 />
               </label>
               <label className="text-sm">
-                Valor
+                {t("value")}
                 <div className="flex gap-2">
                   <input
                     type="number" min={0} step="0.01"
@@ -454,21 +460,20 @@ function InventoryManager({ isDark }) {
               <div className="flex gap-2 items-end">
                 <label className="text-sm flex items-center gap-2">
                   <input type="checkbox" checked={form.equipped} onChange={() => setForm((f) => ({ ...f, equipped: !f.equipped }))}/>
-                  Equipado
+                  {t("equipped")}
                 </label>
                 <label className="text-sm flex items-center gap-2">
                   <input type="checkbox" checked={form.attuned} onChange={() => setForm((f) => ({ ...f, attuned: !f.attuned }))}/>
-                  Sintonizado
+                  {t("attuned")}
                 </label>
               </div>
             </div>
 
-            {/* Campos específicos por categoria */}
             {form.category === "armor" && (
               <div className={cx("rounded-lg p-3 grid md:grid-cols-4 gap-3",
                 isDark ? "border border-zinc-800" : "border border-slate-200")}>
                 <label className="text-sm">
-                  Tipo de Armadura
+                  {t("armorType")}
                   <select
                     className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                       isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
@@ -479,7 +484,7 @@ function InventoryManager({ isDark }) {
                   </select>
                 </label>
                 <label className="text-sm">
-                  CA (AC)
+                  {t("ac")}
                   <input
                     type="number" min={0}
                     className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
@@ -489,7 +494,7 @@ function InventoryManager({ isDark }) {
                   />
                 </label>
                 <label className="text-sm">
-                  Força mín.
+                  {t("strReq")}
                   <input
                     type="number" min={0}
                     className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
@@ -500,7 +505,7 @@ function InventoryManager({ isDark }) {
                 </label>
                 <label className="text-sm flex items-center gap-2">
                   <input type="checkbox" checked={form.stealthDisadv} onChange={() => setForm((f) => ({ ...f, stealthDisadv: !f.stealthDisadv }))}/>
-                  Desvantagem em Furtividade
+                  {t("stealthDisadv")}
                 </label>
               </div>
             )}
@@ -509,27 +514,27 @@ function InventoryManager({ isDark }) {
               <div className={cx("rounded-lg p-3 grid md:grid-cols-4 gap-3",
                 isDark ? "border border-zinc-800" : "border border-slate-200")}>
                 <label className="text-sm md:col-span-2">
-                  Dano
+                  {t("damage")}
                   <input
                     className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                       isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
                     value={form.damage}
                     onChange={(e) => setForm((f) => ({ ...f, damage: e.target.value }))}
-                    placeholder="ex.: 1d8 perfurante"
+                    placeholder="ex.: 1d8 piercing"
                   />
                 </label>
                 <label className="text-sm md:col-span-2">
-                  Alcance
+                  {t("range")}
                   <input
                     className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                       isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
                     value={form.range}
                     onChange={(e) => setForm((f) => ({ ...f, range: e.target.value }))}
-                    placeholder="ex.: corpo-a-corpo, 80/320"
+                    placeholder="ex.: melee, 80/320"
                   />
                 </label>
                 <label className="text-sm">
-                  Munição atual
+                  {t("ammoCurrent")}
                   <input
                     type="number" min={0}
                     className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
@@ -539,7 +544,7 @@ function InventoryManager({ isDark }) {
                   />
                 </label>
                 <label className="text-sm">
-                  Munição máx.
+                  {t("ammoMax")}
                   <input
                     type="number" min={0}
                     className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
@@ -555,7 +560,7 @@ function InventoryManager({ isDark }) {
               <div className={cx("rounded-lg p-3 grid md:grid-cols-3 gap-3",
                 isDark ? "border border-zinc-800" : "border border-slate-200")}>
                 <label className="text-sm">
-                  Tipo (d4, d6, d8, d10, d12, d20, token)
+                  {t("die")}
                   <input
                     className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                       isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
@@ -564,7 +569,7 @@ function InventoryManager({ isDark }) {
                   />
                 </label>
                 <label className="text-sm">
-                  Quantidade de dados
+                  {t("dieCount")}
                   <input
                     type="number" min={0}
                     className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
@@ -574,13 +579,13 @@ function InventoryManager({ isDark }) {
                   />
                 </label>
                 <label className="text-sm">
-                  Rótulo
+                  {t("label")}
                   <input
                     className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                       isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
                     value={form.label}
                     onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
-                    placeholder="ex.: Inspiração, Dado de Risco"
+                    placeholder="ex.: Inspiration, Risk Die"
                   />
                 </label>
               </div>
@@ -590,7 +595,7 @@ function InventoryManager({ isDark }) {
               <div className={cx("rounded-lg p-3 grid md:grid-cols-2 gap-3",
                 isDark ? "border border-zinc-800" : "border border-slate-200")}>
                 <label className="text-sm">
-                  Onde abre
+                  {t("keyWhere")}
                   <input
                     className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                       isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
@@ -600,7 +605,7 @@ function InventoryManager({ isDark }) {
                   />
                 </label>
                 <label className="text-sm">
-                  Finalidade / Observações
+                  {t("keyUse")}
                   <input
                     className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                       isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
@@ -613,7 +618,7 @@ function InventoryManager({ isDark }) {
             )}
 
             <label className="text-sm">
-              Notas
+              {t("notes")}
               <textarea
                 className={cx("mt-1 w-full border rounded-md px-2 py-1.5 min-h-[70px]",
                   isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
@@ -630,7 +635,7 @@ function InventoryManager({ isDark }) {
                   onClick={() => setForm(emptyForm)}
                   className="px-3 py-1.5 rounded-lg border"
                 >
-                  Limpar
+                  {t("clearForm")}
                 </button>
               )}
               <button
@@ -638,13 +643,13 @@ function InventoryManager({ isDark }) {
                 onClick={cancelEdit}
                 className="px-3 py-1.5 rounded-lg border"
               >
-                Cancelar
+                {t("cancel")}
               </button>
               <button
                 type="submit"
                 className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
               >
-                {form.id ? "Salvar item" : "Adicionar item"}
+                {form.id ? t("saveItem") : t("addItem")}
               </button>
             </div>
           </div>
@@ -655,9 +660,9 @@ function InventoryManager({ isDark }) {
       <div className="px-3 pb-2">
         <div className={cx("rounded-xl border p-2 text-sm flex gap-4",
           isDark ? "bg-zinc-950 border-zinc-800" : "bg-white border-slate-200")}>
-          <div><span className="opacity-70">Itens:</span> <strong>{totals.totalQty}</strong></div>
-          <div><span className="opacity-70">Peso total:</span> <strong>{totals.totalWeight.toFixed(2)} lb</strong></div>
-          <div><span className="opacity-70">Valor total:</span> <strong>{gpToPretty(totals.totalGp)}</strong></div>
+          <div><span className="opacity-70">{t("items")}:</span> <strong>{totals.totalQty}</strong></div>
+          <div><span className="opacity-70">{t("totalWeight")}:</span> <strong>{totals.totalWeight.toFixed(2)} lb</strong></div>
+          <div><span className="opacity-70">{t("totalValue")}:</span> <strong>{gpToPretty(totals.totalGp)}</strong></div>
         </div>
       </div>
 
@@ -668,31 +673,34 @@ function InventoryManager({ isDark }) {
           isDark ? "bg-zinc-950" : "bg-slate-50")}>
           <div className={cx("grid grid-cols-[24px_1fr_120px_110px_120px_150px_140px_120px] gap-2 px-2")}>
             <div></div>
-            <div>Item</div>
-            <div>Categoria</div>
-            <div>Qtd</div>
-            <div>Peso (lb)</div>
-            <div>Valor (total)</div>
-            <div>Propriedades</div>
-            <div>Ações</div>
+            <div>{t("item")}</div>
+            <div>{t("category")}</div>
+            <div>{t("qty")}</div>
+            <div>{t("weight")}</div>
+            <div>{t("total")}</div>
+            <div>{t("properties")}</div>
+            <div>{t("actions")}</div>
           </div>
         </div>
 
         {filtered.map((x) => {
           const props = [];
           if (x.category === "armor") {
+            props.append?.();
+          }
+          if (x.category === "armor") {
             props.push(`AC ${x.ac || 0}`);
             if (x.armorType) props.push(getLabel(ARMOR_TYPES, x.armorType));
-            if (x.strReq) props.push(`Força ${x.strReq}+`);
-            if (x.stealthDisadv) props.push("Desv. Furtividade");
+            if (x.strReq) props.push(`STR ${x.strReq}+`);
+            if (x.stealthDisadv) props.push("Stealth Disadv.");
           }
           if (x.category === "weapon") {
             if (x.damage) props.push(x.damage);
             if (x.range) props.push(x.range);
-            if (x.ammoMax) props.push(`Munição ${x.ammoCurrent || 0}/${x.ammoMax}`);
+            if (x.ammoMax) props.push(`${t("ammoCurrent").split(" ")[0]} ${x.ammoCurrent || 0}/${x.ammoMax}`);
           }
           if (x.category === "dice") {
-            props.push(`${x.label || "Fichas"}: ${x.dieCount} ${x.die}`);
+            props.push(`${x.label || "Tokens"}: ${x.dieCount} ${x.die}`);
           }
           if (x.category === "keys") {
             if (x.keyWhere) props.push(`Local: ${x.keyWhere}`);
@@ -720,12 +728,12 @@ function InventoryManager({ isDark }) {
                 <div className={cx("text-sm font-medium truncate", x.equipped ? "text-emerald-600" : "")}>
                   {x.name}
                 </div>
-                {x.attuned && <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-600 text-white">Sintonizado</span>}
+                {x.attuned && <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-600 text-white">{t("attuned")}</span>}
                 {Array.isArray(x.tags) && x.tags.length > 0 && (
                   <div className="flex gap-1 flex-wrap">
-                    {x.tags.slice(0, 3).map((t, i) => (
+                    {x.tags.slice(0, 3).map((tTag, i) => (
                       <span key={i} className={cx("text-[10px] px-2 py-0.5 rounded-full border",
-                        isDark ? "border-zinc-700" : "border-slate-200")}>{t}</span>
+                        isDark ? "border-zinc-700" : "border-slate-200")}>{tTag}</span>
                     ))}
                   </div>
                 )}
@@ -748,15 +756,15 @@ function InventoryManager({ isDark }) {
                   onClick={() => toggle(x.id, "equipped")}
                   title="Equipar/Desequipar"
                 >
-                  {x.equipped ? "Desequipar" : "Equipar"}
+                  {x.equipped ? t("unequip") : t("equip")}
                 </button>
                 <button
                   className={cx("px-2 py-1 text-xs rounded-md border",
                     isDark ? "border-zinc-700 hover:bg-zinc-800" : "border-slate-200 hover:bg-slate-50")}
                   onClick={() => toggle(x.id, "attuned")}
-                  title="Sintonizar"
+                  title={t("attune")}
                 >
-                  {x.attuned ? "Dessintonizar" : "Sintonizar"}
+                  {x.attuned ? t("unattune") : t("attune")}
                 </button>
 
                 {x.category === "weapon" && x.ammoMax > 0 && (
@@ -764,16 +772,16 @@ function InventoryManager({ isDark }) {
                     <button
                       className="px-2 py-1 text-xs rounded-md bg-slate-700 text-white hover:bg-slate-800"
                       onClick={() => useAmmo(x.id, -1)}
-                      title="Gastar 1 munição"
+                      title={t("ammoMinus")}
                     >
-                      -1 munição
+                      {t("ammoMinus")}
                     </button>
                     <button
                       className="px-2 py-1 text-xs rounded-md bg-slate-700 text-white hover:bg-slate-800"
                       onClick={() => useAmmo(x.id, +1)}
-                      title="Recarregar 1"
+                      title={t("ammoPlus")}
                     >
-                      +1 munição
+                      {t("ammoPlus")}
                     </button>
                   </>
                 )}
@@ -782,9 +790,9 @@ function InventoryManager({ isDark }) {
                   <button
                     className="px-2 py-1 text-xs rounded-md bg-amber-600 text-white hover:bg-amber-700"
                     onClick={() => consumeOne(x.id)}
-                    title="Consumir 1 unidade"
+                    title={t("useOne")}
                   >
-                    Usar 1
+                    {t("useOne")}
                   </button>
                 )}
 
@@ -792,19 +800,19 @@ function InventoryManager({ isDark }) {
                   className="px-2 py-1 text-xs rounded-md bg-violet-600 text-white hover:bg-violet-700"
                   onClick={() => editItem(x)}
                 >
-                  Editar
+                  {t("edit")}
                 </button>
                 <button
                   className="px-2 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700"
                   onClick={() => duplicateItem(x.id)}
                 >
-                  Duplicar
+                  {t("duplicate")}
                 </button>
                 <button
                   className="px-2 py-1 text-xs rounded-md bg-red-600 text-white hover:bg-red-700"
                   onClick={() => deleteItem(x.id)}
                 >
-                  Apagar
+                  {t("remove")}
                 </button>
               </div>
             </div>
@@ -814,7 +822,7 @@ function InventoryManager({ isDark }) {
         {filtered.length === 0 && (
           <div className={cx("text-sm px-2 py-6 text-center rounded-xl border",
             isDark ? "border-zinc-800 text-zinc-400" : "border-slate-200 text-gray-600")}>
-            Nenhum item encontrado.
+            {t("noResults")}
           </div>
         )}
       </div>
