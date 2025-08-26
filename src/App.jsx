@@ -525,7 +525,7 @@ export default function SkillTreeBuilderDnd() {
                 }
                 className={cx("block w-full text-left px-2 py-1 rounded", isDark ? "hover:bg-zinc-800" : "hover:bg-slate-50")}
               >
-                Talento / ASI
+                {t("feat")}
               </button>
               <button
                 onClick={() =>
@@ -539,7 +539,7 @@ export default function SkillTreeBuilderDnd() {
                 }
                 className={cx("block w-full text-left px-2 py-1 rounded", isDark ? "hover:bg-zinc-800" : "hover:bg-slate-50")}
               >
-                Ataque Extra
+                {t("extraAttack")}
               </button>
               <button
                 onClick={() =>
@@ -654,7 +654,7 @@ export default function SkillTreeBuilderDnd() {
               )}
             />
             <span className="text-xs opacity-75">
-              {nodes.length} nós • {edges.length} conexões
+              {nodes.length} {t("nodes")} • {edges.length} {t("connections")}
             </span>
           </div>
         </div>
@@ -738,7 +738,7 @@ export default function SkillTreeBuilderDnd() {
               ) : (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-semibold">Editar Nó</h3>
+                    <h3 className="font-semibold">{t("editNode")}</h3>
                     <button
                       onClick={deleteSelectedNode}
                       className="px-2 py-1 rounded-md bg-red-600 text-white text-sm hover:bg-red-700"
@@ -987,14 +987,14 @@ export default function SkillTreeBuilderDnd() {
                         value={selectedNode.data.prereqMode || "all"}
                         onChange={(e) => patchSelected({ prereqMode: e.target.value })}
                       >
-                        <option value="all">Todos</option>
-                        <option value="any">Qualquer um</option>
+                        <option value="all">{t("all")}</option>
+                        <option value="any">{t("any")}</option>
                       </select>
                     </label>
                   </div>
 
                   <label className="text-sm">
-                    Tags (separe por vírgulas)
+                    {t("tags")}
                     <input
                       className={cx(
                         "mt-1 w-full border rounded-md px-2 py-1.5",
@@ -1049,27 +1049,22 @@ export default function SkillTreeBuilderDnd() {
                 <details>
                   <summary className="cursor-pointer font-medium">Ajuda rápida</summary>
                   <ul className={cx("mt-2 list-disc pl-5 space-y-1", isDark ? "text-zinc-300" : "text-gray-700")}>
-                    <li>Conecte nós para indicar pré-requisitos (seta ➜ do requisito para a habilidade).</li>
-                    <li>Use <strong>Layout automático</strong> para organizar por ordem de desbloqueio.</li>
-                    <li>Campos de D&D: Tipo, Classe, Nível, Atributos, Ação e Usos.</li>
-                    <li>Exporte em <em>JSON</em> (para reabrir) ou <em>Markdown</em> (para documentação).</li>
-                    <li>Dê <em>duplo clique</em> em uma ligação para removê-la.</li>
-                    <li>Atalhos: '_' novo nó • '{' auto layout • '}' ajustar visão • Ctrl+S exporta.</li>
+                    {t("helpBullets")}
                   </ul>
                 </details>
 
                 {lastValidation && (
                   <div className={cx("border rounded-lg p-3", isDark ? "border-zinc-800" : "border-slate-200")}>
-                    <div className="font-medium mb-1">Relatório de Validação</div>
+                    <div className="font-medium mb-1">{t("validationReport")}</div>
                     {lastValidation.cycle ? (
-                      <div className="text-red-500">Ciclo: {lastValidation.cycle.join(" → ")}</div>
+                      <div className="text-red-500">{t("cycle")}: {lastValidation.cycle.join(" → ")}</div>
                     ) : (
-                      <div className="text-emerald-500">Sem ciclos detectados.</div>
+                      <div className="text-emerald-500">{t("noCycles")}.</div>
                     )}
                     <div className={cx(isDark ? "text-zinc-300" : "text-gray-700")}>
-                      Raízes: <span className="font-mono">{(lastValidation.roots || []).join(", ") || "—"}</span>
+                      {t("roots")}: <span className="font-mono">{(lastValidation.roots || []).join(", ") || "—"}</span>
                     </div>
-                    <div className={cx(isDark ? "text-zinc-300" : "text-gray-700")}>Camadas: {lastValidation.layersCount}</div>
+                    <div className={cx(isDark ? "text-zinc-300" : "text-gray-700")}>{t("layers")}: {lastValidation.layersCount}</div>
                   </div>
                 )}
               </div>
