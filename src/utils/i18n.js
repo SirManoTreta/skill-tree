@@ -123,6 +123,16 @@ const dict = {
     saveItem: "Salvar item",
     addItem: "Adicionar item",
     language: "Idioma",
+    ammoSlots: "Munição (slots)",
+    addSlot: "Adicionar slot",
+    noAmmoSlots: "Nenhum slot de munição. Use \"Adicionar slot\".",
+    ammoType: "Tipo (ex.: padrão, radiante...)",
+    setActive: "Definir como ativa",
+    nextAmmo: "Próx. munição",
+    ammoSlot: "Munição",
+    current: "Atual",
+    max: "Máx",
+
   },
   en: {
     tree: "Tree",
@@ -245,6 +255,16 @@ const dict = {
     saveItem: "Save item",
     addItem: "Add item",
     language: "Language",
+    ammoSlots: "Ammo (slots)",
+    addSlot: "Add slot",
+    noAmmoSlots: "No ammo slots. Click \"Add slot\".",
+    ammoType: "Type (e.g., normal, radiant...)",
+    setActive: "Set active",
+    nextAmmo: "Next ammo",
+    ammoSlot: "Ammo",
+    current: "Current",
+    max: "Max",
+
   },
 };
 
