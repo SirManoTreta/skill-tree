@@ -733,35 +733,36 @@ const editItem = (it) => {
                   })}
                 />
               </label>
-              <label className="text-sm md:col-span-4">
-                {t("slotNote")}
-                <input
-                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                  value={s.note || ""}
-                  onChange={(e) => setForm((f) => {
-                    const next = { ...(f.ammo || { active: 0, slots: [] }) };
-                    next.slots = next.slots.map((ss, idx) => idx === i ? { ...ss, note: e.target.value } : ss);
-                    return { ...f, ammo: next };
-                  })}
-                />
-              </label>
-              <div className="md:col-span-12 flex justify-end">
-                <button
-                  type="button"
-                  className={cx("px-2 py-1 text-xs rounded-md border",
-                    isDark ? "bg-zinc-900 border-zinc-700 hover:bg-zinc-800" : "bg-white border-slate-300 hover:bg-slate-50")}
-                  onClick={() => setForm((f) => {
-                    const next = { ...(f.ammo || { active: 0, slots: [] }) };
-                    const before = next.slots || [];
-                    const newSlots = before.filter((_, idx) => idx !== i);
-                    const newActive = Math.min(Math.max(0, (next.active || 0) - (i <= (next.active || 0) ? 1 : 0)), Math.max(0, newSlots.length - 1));
-                    return { ...f, ammo: { active: newActive, slots: newSlots } };
-                  })}
-                >
-                  {t("remove")}
-                </button>
-              </div>
+              <div className="md:col-span-4 text-sm">
+  <label className="text-sm">{t("slotNote")}</label>
+  <div className="mt-1 flex items-center gap-2">
+    <input
+      className={cx("flex-1 border rounded-md px-2 py-1.5",
+        isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+      value={s.note || ""}
+      onChange={(e) => setForm((f) => {
+        const next = { ...(f.ammo || { active: 0, slots: [] }) };
+        next.slots = next.slots.map((ss, idx) => idx === i ? { ...ss, note: e.target.value } : ss);
+        return { ...f, ammo: next };
+      })}
+    />
+    <button
+      type="button"
+      className={cx("shrink-0 px-3 py-1.5 text-xs rounded-md border",
+        isDark ? "bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-red-400 hover:text-red-300" : "bg-white border-slate-300 hover:bg-slate-50 text-red-600")}
+      onClick={() => setForm((f) => {
+        const next = { ...(f.ammo || { active: 0, slots: [] }) };
+        const before = next.slots || [];
+        const newSlots = before.filter((_, idx) => idx !== i);
+        const newActive = Math.min(Math.max(0, (next.active || 0) - (i <= (next.active || 0) ? 1 : 0)), Math.max(0, newSlots.length - 1));
+        return { ...f, ammo: { active: newActive, slots: newSlots } };
+      })}
+      title={t("remove")}
+    >
+      {t("remove")}
+    </button>
+  </div>
+</div>
             </div>
           ))}
         </div>
@@ -771,7 +772,7 @@ const editItem = (it) => {
     </div>
   </>
 )}
-){}
+
 
             {form.category === "dice" && (
               <div className={cx("rounded-lg p-3 grid md:grid-cols-3 gap-3",
