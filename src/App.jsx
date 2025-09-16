@@ -6,6 +6,7 @@ import { NODE_TYPES, CLASSES_5E, ACTION_TYPES, USES_TYPES } from "./constants/dn
 import { cx, uid, download, parseTags, formatTags, getLabel } from "./utils/misc";
 import { buildGraph, detectCycle, topologicalLayers } from "./utils/graph";
 import { t, getLang, setLang } from "./utils/i18n";
+import CharacterSheet from "./sheet/CharacterSheet";
 import ReactFlow, {
   Background,
   Controls,
@@ -58,6 +59,12 @@ export default function SkillTreeBuilderDnd() {
   });
   const isDark = theme === "dark";
 
+  useEffect(() => {
+    const bg = isDark ? "#09090b" /* zinc-950 aprox. */ : "#f8fafc" /* slate-50 aprox. */;
+    try { document.documentElement.style.backgroundColor = bg; } catch {}
+    try { document.body.style.backgroundColor = bg; } catch {}
+  }, [isDark]);
+  
   useEffect(() => {
     localStorage.setItem(THEME_KEY, theme);
   }, [theme]);
@@ -423,6 +430,20 @@ export default function SkillTreeBuilderDnd() {
             🌳 {t("tree")}
           </button>
           <button
+            onClick={() => setPage("sheet")}
+            className={cx(
+              "px-3 py-1.5 rounded-lg border shadow",
+              page === "sheet"
+                ? "bg-indigo-600 text-white border-indigo-600"
+                : isDark
+                  ? "bg-zinc-900/90 border-zinc-700 hover:bg-zinc-800"
+                  : "bg-white/90 border-slate-200 hover:bg-slate-50"
+            )}
+          >
+            📝 {t("sheet")}
+          </button>
+
+          <button
             onClick={() => setPage("inventory")}
             className={cx(
               "px-3 py-1.5 rounded-lg border shadow",
@@ -469,6 +490,7 @@ export default function SkillTreeBuilderDnd() {
             </button>
           </div>
         )}
+
 
         {/* Tema */}
         <button
@@ -1070,8 +1092,10 @@ export default function SkillTreeBuilderDnd() {
               </div>
             </aside>
           </>
-        ) : (
+        ) : page === "inventory" ? (
           <InventoryManager isDark={isDark} />
+        ) : (
+          <CharacterSheet isDark={isDark} />
         )}
       </div>
     </div>
