@@ -343,7 +343,7 @@ export default function CharacterSheet({ isDark }) {
             "rounded-2xl border p-3 md:p-4 flex justify-center",
             isDark ? "bg-zinc-950 border-zinc-800" : "bg-white border-slate-200"
           )}>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 items-start gap-2 md:gap-3 w-full max-w-[1100px]">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 items-start gap-2 md:gap-3 w-full max-w-[1250px]">
               <HPBox
                 isDark={isDark}
                 className="col-span-2"
