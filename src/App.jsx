@@ -1,7 +1,7 @@
 import SkillNode from "./components/SkillNode";
 import InventoryManager from "./inventory/InventoryManager";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY } from "./constants/storage";
+import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY, SHEET_KEY } from "./constants/storage";
 import { NODE_TYPES, CLASSES_5E, ACTION_TYPES, USES_TYPES } from "./constants/dnd";
 import { cx, uid, download, parseTags, formatTags, getLabel } from "./utils/misc";
 import { buildGraph, detectCycle, topologicalLayers } from "./utils/graph";

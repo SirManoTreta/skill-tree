@@ -36,6 +36,7 @@ const emptyOrigin = () => ({
   skills: Object.fromEntries(SKILLS.map(s => [s.id, 0])),
 });
 
+// agora salvaguardas/perícias usam contagem (0..9)
 const defaultSheet = {
   abilities: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 },
   prof: 2,
@@ -48,31 +49,12 @@ const defaultSheet = {
   origins: {
     species: emptyOrigin(),
     background: emptyOrigin(),
-    class: emptyOrigin(),
+    class: emptyOrigin(), // << NOVO: classe também vira origem
   },
 };
 
 export default function CharacterSheet({ isDark }) {
-  const [sheet, setSheet] = useState(() => {
-    try {
-      const raw = localStorage.getItem(SHEET_KEY);
-      return raw ? { ...defaultSheet, ...JSON.parse(raw) } : defaultSheet;
-    } catch {
-      return defaultSheet;
-    }
-  });
-
-  const toCount = (v) => (typeof v === "number" ? v : v ? 1 : 0);
-
-  useEffect(() => {
-    const id = setTimeout(() => {
-      try { localStorage.setItem(SHEET_KEY, JSON.stringify(sheet)); } catch {}
-    }, 200);
-    return () => clearTimeout(id);
-  }, [sheet]);
-
-  // ===== Export/Import/Clear (Ficha) + Exportar Tudo =====
-  const exportSheetJSON = async () => {
+    const exportSheetJSON = async () => {
     const data = JSON.stringify(sheet, null, 2);
     await download(
       `character-sheet-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`,
@@ -86,6 +68,7 @@ export default function CharacterSheet({ isDark }) {
     reader.onload = () => {
       try {
         const parsed = JSON.parse(reader.result);
+        // Mescla por segurança com o default
         setSheet({ ...defaultSheet, ...parsed });
         alert("Ficha importada com sucesso!");
       } catch {
@@ -101,54 +84,41 @@ export default function CharacterSheet({ isDark }) {
     setSheet(defaultSheet);
   };
 
-  // Exportar Tudo: tenta pegar árvore/inventário por chaves conhecidas e também inclui TODO o localStorage como fallback.
-  const exportAllJSON = async () => {
-    // Best effort: tenta usar chaves conhecidas se existirem
-    let bundle = { tree: {}, sheet: null, inventory: { items: [] }, meta: { exportedAt: new Date().toISOString() } };
-    try { bundle.sheet = JSON.parse(localStorage.getItem(SHEET_KEY) || "null"); } catch {}
-    // Inventário
-    try { 
-      const invKey = (window.HABILITY_INVENTORY_KEY) || (window.INVENTORY_KEY) || null;
-      const guess = invKey ? localStorage.getItem(invKey) : null;
-      const byConst = guess ? JSON.parse(guess) : null;
-      bundle.inventory.items = Array.isArray(byConst) ? byConst : (JSON.parse(localStorage.getItem("INVENTORY_KEY") || "[]"));
-    } catch { /* ignore */ }
-    // Árvore (tentativas)
+  const [sheet, setSheet] = useState(() => {
     try {
-      const nodes = JSON.parse(localStorage.getItem("TREE_NODES") || "[]");
-      const edges = JSON.parse(localStorage.getItem("TREE_EDGES") || "[]");
-      bundle.tree = { nodes, edges };
-    } catch { /* ignore */ }
+      const raw = localStorage.getItem(SHEET_KEY);
+      return raw ? { ...defaultSheet, ...JSON.parse(raw) } : defaultSheet;
+    } catch {
+      return defaultSheet;
+    }
+  });
 
-    // Fallback: captura TODO localStorage também
-    const all = {};
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        try { all[k] = JSON.parse(localStorage.getItem(k)); }
-        catch { all[k] = localStorage.getItem(k); }
-      }
-    } catch {}
-    bundle.__allLocalStorage = all;
+  // normaliza booleans antigos -> contagem
+  const toCount = (v) => (typeof v === "number" ? v : v ? 1 : 0);
 
-    await download(
-      `hability-all-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`,
-      JSON.stringify(bundle, null, 2),
-      "application/json"
-    );
-  };
+  // persistência
+  useEffect(() => {
+    const id = setTimeout(() => {
+      try { localStorage.setItem(SHEET_KEY, JSON.stringify(sheet)); } catch {}
+    }, 200);
+    return () => clearTimeout(id);
+  }, [sheet]);
 
-  // ===== Origens => bônus =====
+  // ===== Origens => bônus de atributo/perícia =====
   const originAblBonus = useMemo(() => {
     const sp = sheet.origins?.species?.abilities || {};
     const bg = sheet.origins?.background?.abilities || {};
     const cl = sheet.origins?.class?.abilities || {};
     return ABIL_KEYS.reduce((acc, k) => {
-      acc[k] = Number(sp[k] || 0) + Number(bg[k] || 0) + Number(cl[k] || 0);
+      acc[k] =
+        Number(sp[k] || 0) +
+        Number(bg[k] || 0) +
+        Number(cl[k] || 0);
       return acc;
     }, {});
   }, [sheet.origins]);
 
+  // Atributos totais (base + bônus de orígens)
   const ablTotal = useMemo(() => {
     return ABIL_KEYS.reduce((acc, k) => {
       const base = Number(sheet.abilities[k] || 0);
@@ -157,20 +127,24 @@ export default function CharacterSheet({ isDark }) {
     }, {});
   }, [sheet.abilities, originAblBonus]);
 
+  // Mods com base no atributo total
   const abilityMods = useMemo(
-    () => Object.fromEntries(ABIL_KEYS.map(k => [k, mod(ablTotal[k])])), [ablTotal]
+    () => Object.fromEntries(ABIL_KEYS.map(k => [k, mod(ablTotal[k])])),
+    [ablTotal]
   );
 
   const skillLabels = t("skills");
   const abilityShort = t("abilitiesShort");
   const abilityFull  = t("abilitiesFull");
 
+  // altera a BASE convertendo do total exibido
   const changeAbilityTotal = (k, totalShown) =>
     setSheet(s => {
       const base = clamp(Number(totalShown || 0) - Number(originAblBonus[k] || 0), 1, 30);
       return { ...s, abilities: { ...s.abilities, [k]: base } };
     });
 
+  // ---- salvaguardas/perícias (contagem) ----
   const toggleSave = (k) =>
     setSheet(s => {
       const prev = toCount(s.saves?.[k]);
@@ -191,6 +165,7 @@ export default function CharacterSheet({ isDark }) {
     return abilityMods[abl] + count * Number(sheet.prof || 0);
   };
 
+  // soma de contagens vindas das Origens (espécie+antecedente+classe)
   const originSkillCount = (id) =>
     Number(sheet.origins?.species?.skills?.[id] || 0) +
     Number(sheet.origins?.background?.skills?.[id] || 0) +
@@ -231,6 +206,7 @@ export default function CharacterSheet({ isDark }) {
       return { ...s, hp: { max, current: cur, temp } };
     });
 
+  // dano/cura: consome Temp antes do Atual; cura só PV atuais
   const applyHp = (delta) =>
     setSheet((s) => {
       const max = Math.max(0, Number(s.hp?.max || 0));
@@ -250,8 +226,10 @@ export default function CharacterSheet({ isDark }) {
       return { ...s, hp: { max, current: cur, temp } };
     });
 
+  // ---- Iniciativa (talento Alerta) ----
   const initiativeTotal = abilityMods.DEX + (sheet.initAlert ? Number(sheet.prof || 0) : 0);
 
+  // ---- Origens setters ----
   const setOriginName = (key, name) =>
     setSheet(s => ({
       ...s,
@@ -284,6 +262,7 @@ export default function CharacterSheet({ isDark }) {
     });
 
   return (
+    
     <div className="w-full h-full overflow-auto p-2 sm:p-3">
       {/* Ações da Ficha */}
       <div className="mb-2 flex flex-wrap gap-2 justify-end">
@@ -311,8 +290,9 @@ export default function CharacterSheet({ isDark }) {
           {t("clear")}
         </button>
 
+        {/* OPCIONAL: Exportar Tudo a partir da ficha via evento global */}
         <button
-          onClick={exportAllJSON}
+          onClick={() => window.dispatchEvent(new Event("hability:exportAll"))}
           className="px-3 py-1.5 rounded-lg border"
         >
           {t("exportAll") || "Exportar Tudo"}
@@ -329,9 +309,9 @@ export default function CharacterSheet({ isDark }) {
               isDark={isDark}
               labelFull={abilityFull[k]}
               labelShort={abilityShort[k]}
-              value={ablTotal[k]}
+              value={ablTotal[k]}                    // total mostrado
               modValue={abilityMods[k]}
-              onChange={(v)=>changeAbilityTotal(k, v)}
+              onChange={(v)=>changeAbilityTotal(k, v)} // escreve base
             />
           ))}
         </div>
@@ -343,7 +323,8 @@ export default function CharacterSheet({ isDark }) {
             "rounded-2xl border p-3 md:p-4 flex justify-center",
             isDark ? "bg-zinc-950 border-zinc-800" : "bg-white border-slate-200"
           )}>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 items-start gap-2 md:gap-3 w-full max-w-[1100px]">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 items-start gap-2 md:gap-3 w-full max-w-[1200px]">
+              
               <HPBox
                 isDark={isDark}
                 className="col-span-2"
@@ -443,14 +424,46 @@ export default function CharacterSheet({ isDark }) {
               </div>
 
               {/* Origens */}
-              <OriginsPanel
-                isDark={isDark}
-                sheet={sheet}
-                setOriginName={setOriginName}
-                setOriginAbl={setOriginAbl}
-                setOriginSkill={setOriginSkill}
-                skillLabels={skillLabels}
-              />
+              <div className={cx(
+                "rounded-2xl border p-2 md:p-3",
+                isDark ? "bg-zinc-950 border-zinc-800" : "bg-white border-slate-200"
+              )}>
+                <div className="mb-2 font-semibold">{t("originsTitle")}</div>
+
+                <OriginCard
+                  isDark={isDark}
+                  label={t("species")}
+                  skillLabels={skillLabels}
+                  origin={sheet.origins?.species || emptyOrigin()}
+                  setName={(v) => setOriginName("species", v)}
+                  setAbl={(abl, v) => setOriginAbl("species", abl, v)}
+                  setSkill={(id, n) => setOriginSkill("species", id, n)}
+                />
+
+                <div className="my-2 h-px bg-black/10 dark:bg-white/10" />
+
+                <OriginCard
+                  isDark={isDark}
+                  label={t("backgroundTitle")}
+                  skillLabels={skillLabels}
+                  origin={sheet.origins?.background || emptyOrigin()}
+                  setName={(v) => setOriginName("background", v)}
+                  setAbl={(abl, v) => setOriginAbl("background", abl, v)}
+                  setSkill={(id, n) => setOriginSkill("background", id, n)}
+                />
+
+                <div className="my-2 h-px bg-black/10 dark:bg-white/10" />
+
+                <OriginCard
+                  isDark={isDark}
+                  label={t("classTitle")}
+                  skillLabels={skillLabels}
+                  origin={sheet.origins?.class || emptyOrigin()}
+                  setName={(v) => setOriginName("class", v)}
+                  setAbl={(abl, v) => setOriginAbl("class", abl, v)}
+                  setSkill={(id, n) => setOriginSkill("class", id, n)}
+                />
+              </div>
             </div>
 
             {/* Coluna direita: Perícias */}
@@ -463,7 +476,7 @@ export default function CharacterSheet({ isDark }) {
                 {SKILLS.map(s => {
                   const countBase = toCount(sheet.skills[s.id]);
                   const bonusFromOrigins = originSkillCount(s.id);
-                  const effectiveChecked = countBase > 0 || bonusFromOrigins > 0;
+                  const effectiveChecked = countBase > 0 || bonusFromOrigins > 0; // << marca quando vem da origem
                   const fromOrigins = bonusFromOrigins > 0;
 
                   return (
@@ -477,7 +490,7 @@ export default function CharacterSheet({ isDark }) {
                             type="checkbox"
                             checked={effectiveChecked}
                             onChange={() => !fromOrigins && toggleSkill(s.id)}
-                            disabled={fromOrigins}
+                            disabled={fromOrigins} // não dá pra “desmarcar” o que vem de origem
                             title={fromOrigins ? t("grantedSkills") : ""}
                           />
                           <span>
@@ -517,50 +530,6 @@ export default function CharacterSheet({ isDark }) {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-/** Painel de Origens (Espécie/Antecedente/Classe) */
-function OriginsPanel({ isDark, sheet, setOriginName, setOriginAbl, setOriginSkill, skillLabels }) {
-  const box = isDark ? "bg-zinc-950 border-zinc-800" : "bg-white border-slate-200";
-  return (
-    <div className={cx("rounded-2xl border p-2 md:p-3", box)}>
-      <div className="mb-2 font-semibold">{t("originsTitle")}</div>
-
-      <OriginCard
-        isDark={isDark}
-        label={t("species")}
-        skillLabels={skillLabels}
-        origin={sheet.origins?.species || emptyOrigin()}
-        setName={(v) => setOriginName("species", v)}
-        setAbl={(abl, v) => setOriginAbl("species", abl, v)}
-        setSkill={(id, n) => setOriginSkill("species", id, n)}
-      />
-
-      <div className="my-2 h-px bg-black/10 dark:bg-white/10" />
-
-      <OriginCard
-        isDark={isDark}
-        label={t("backgroundTitle")}
-        skillLabels={skillLabels}
-        origin={sheet.origins?.background || emptyOrigin()}
-        setName={(v) => setOriginName("background", v)}
-        setAbl={(abl, v) => setOriginAbl("background", abl, v)}
-        setSkill={(id, n) => setOriginSkill("background", id, n)}
-      />
-
-      <div className="my-2 h-px bg-black/10 dark:bg-white/10" />
-
-      <OriginCard
-        isDark={isDark}
-        label={t("classTitle")}
-        skillLabels={skillLabels}
-        origin={sheet.origins?.class || emptyOrigin()}
-        setName={(v) => setOriginName("class", v)}
-        setAbl={(abl, v) => setOriginAbl("class", abl, v)}
-        setSkill={(id, n) => setOriginSkill("class", id, n)}
-      />
     </div>
   );
 }
@@ -832,6 +801,7 @@ function OriginCard({ isDark, label, origin, setName, setAbl, setSkill, skillLab
       {/* Bônus de Atributos */}
       <div>
         <div className={cx("text-xs mb-1", titleCls)}>{t("abilityBonuses")}</div>
+        
         <div className="grid grid-cols-6 gap-1.5">
           {ABIL_KEYS.map(k => (
             <label key={k} className="text-[11px] text-center">
