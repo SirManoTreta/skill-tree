@@ -10,7 +10,7 @@ const SKILLS = [
   { id: "animalHandling", abl: "WIS" },
   { id: "arcana", abl: "INT" },
   { id: "athletics", abl: "STR" },
-  { id: "deception", abl: "CHA" },
+  { id: "decesption", abl: "CHA" },
   { id: "history", abl: "INT" },
   { id: "insight", abl: "WIS" },
   { id: "intimidation", abl: "CHA" },
