@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
+
 import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY, SHEET_KEY } from "../constants/storage";
+
+import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY } from "../constants/storage";
+
 import { ITEM_CATEGORIES, ARMOR_TYPES } from "../constants/dnd";
 import { cx, uid, parseTags, formatTags, getLabel, download } from "../utils/misc";
 import { t, getLang, setLang } from "../utils/i18n";
