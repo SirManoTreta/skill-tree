@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY } from "../constants/storage";
+import React, { useEffect, useMemo, useState, useRef } from "react";
+import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY, SHEET_KEY } from "../constants/storage";
 import { ITEM_CATEGORIES, ARMOR_TYPES } from "../constants/dnd";
 import { cx, uid, parseTags, formatTags, getLabel, download } from "../utils/misc";
 import { t, getLang, setLang } from "../utils/i18n";
@@ -37,6 +37,20 @@ function InventoryManager({ isDark }) {
   const [sortDir, setSortDir] = useState("asc");
   const [selectedIds, setSelectedIds] = useState([]);
 
+  // UI: ammo dropdown per-row
+  const [ammoMenuOpenId, setAmmoMenuOpenId] = useState(null);
+  const ammoMenuRef = useRef(null);
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (ammoMenuOpenId && ammoMenuRef.current && !ammoMenuRef.current.contains(e.target)) {
+        setAmmoMenuOpenId(null);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [ammoMenuOpenId]);
+
+
   // Formulário de novo/edição (dobrável)
   const emptyForm = useMemo(() => ({
     id: null,
@@ -60,6 +74,7 @@ function InventoryManager({ isDark }) {
     range: "",
     ammoCurrent: 0,
     ammoMax: 0,
+    ammo: { active: 0, slots: [] },
     // Dados
     die: "d6",
     dieCount: 0,
@@ -79,22 +94,47 @@ function InventoryManager({ isDark }) {
   const openNew = () => { setForm(emptyForm); setShowEditor(true); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const cancelEdit = () => { setForm(emptyForm); setShowEditor(false); };
 
-  const onSubmit = (e) => {
+  
+const onSubmit = (e) => {
     e?.preventDefault?.();
     const id = form.id || uid();
+
+    // Normalize ammo for weapons:
+    let ammoData = undefined;
+    if (form.category === "weapon") {
+      if (form?.ammo && Array.isArray(form.ammo.slots) && form.ammo.slots.length) {
+        const cleanSlots = form.ammo.slots
+          .filter((s) => s && (s.type || s.current || s.max || s.note !== undefined))
+          .map((s) => ({
+            type: (s.type || "Comum"),
+            current: Math.max(0, Number(s.current || 0)),
+            max: Math.max(0, Number(s.max || 0)),
+            note: s.note || "",
+          }));
+        const active = Math.min(Math.max(0, Number(form.ammo.active || 0)), Math.max(0, cleanSlots.length - 1));
+        if (cleanSlots.length) ammoData = { active, slots: cleanSlots };
+      } else if (Number(form.ammoMax || 0) > 0) {
+        ammoData = { active: 0, slots: [{ type: "Comum", current: Number(form.ammoCurrent || 0), max: Number(form.ammoMax || 0), note: "" }] };
+      }
+    }
+
+    const activeSlot = ammoData?.slots?.[ammoData.active] || null;
+
     const base = {
       ...form,
       id,
+      ammo: ammoData,
+      ammoCurrent: Number(activeSlot ? activeSlot.current : (form.ammoCurrent || 0)),
+      ammoMax: Number(activeSlot ? activeSlot.max : (form.ammoMax || 0)),
       valueGp: currencyToGp(form.valueNum, form.valueUnit),
       tags: Array.isArray(form.tags) ? form.tags : parseTags(form.tags),
       qty: Math.max(0, Number(form.qty || 0)),
       weight: Number(form.weight || 0),
       ac: Number(form.ac || 0),
       strReq: Number(form.strReq || 0),
-      ammoCurrent: Number(form.ammoCurrent || 0),
-      ammoMax: Number(form.ammoMax || 0),
       dieCount: Number(form.dieCount || 0),
     };
+
     setItems((arr) => {
       const exists = arr.some((x) => x.id === id);
       if (exists) return arr.map((x) => (x.id === id ? base : x));
@@ -104,10 +144,18 @@ function InventoryManager({ isDark }) {
     setForm(emptyForm);
   };
 
-  const editItem = (it) => {
+
+const editItem = (it) => {
+    // Prepare ammo for editor: prefer slots; if legacy fields present, convert to one slot.
+    let ammoBlock = it.ammo && Array.isArray(it.ammo.slots)
+      ? it.ammo
+      : (Number(it.ammoMax || 0) > 0
+          ? { active: 0, slots: [{ type: "Comum", current: Number(it.ammoCurrent || 0), max: Number(it.ammoMax || 0), note: "" }] }
+          : { active: 0, slots: [] });
     setForm({
       ...emptyForm,
       ...it,
+      ammo: ammoBlock,
       valueNum: it.valueNum ?? (it.valueGp ?? 0),
       valueUnit: it.valueUnit || "gp",
       tags: it.tags || [],
@@ -115,6 +163,7 @@ function InventoryManager({ isDark }) {
     setShowEditor(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
 
   const duplicateItem = (id) => {
     const it = items.find((x) => x.id === id);
@@ -132,17 +181,70 @@ function InventoryManager({ isDark }) {
   const consumeOne = (id) =>
     setItems((arr) => arr.map((x) => (x.id === id ? { ...x, qty: Math.max(0, (x.qty || 0) - 1) } : x)));
 
-  const useAmmo = (id, delta) =>
+
+  // --- Ammo helpers (legacy + slots) ---
+  const ensureAmmo = (item) => {
+    // Returns {active, slots[]} or null. If legacy fields exist, convert on the fly.
+    if (item?.ammo && Array.isArray(item.ammo.slots) && item.ammo.slots.length) return item.ammo;
+    if (Number(item?.ammoMax || 0) > 0) {
+      return {
+        active: 0,
+        slots: [{ type: "Comum", current: Number(item.ammoCurrent || 0), max: Number(item.ammoMax || 0), note: "" }],
+      };
+    }
+    return null;
+  };
+
+  const setAmmo = (id, updater) => {
     setItems((arr) =>
-      arr.map((x) =>
-        x.id === id
-          ? {
-              ...x,
-              ammoCurrent: Math.max(0, Math.min((x.ammoMax || 0), (x.ammoCurrent || 0) + delta)),
-            }
-          : x
-      )
+      arr.map((x) => {
+        if (x.id !== id) return x;
+        const ammo = ensureAmmo(x);
+        if (!ammo) return x;
+        const nextAmmo = updater({ ...ammo, slots: ammo.slots.map(s => ({...s})) });
+        // keep legacy fields in sync with active slot for backward compatibility
+        const act = nextAmmo.slots[nextAmmo.active] || { current: 0, max: 0 };
+        return { ...x, ammo: nextAmmo, ammoCurrent: act.current, ammoMax: act.max };
+      })
     );
+  };
+
+  const setActiveAmmoSlot = (id, idx) => {
+    setAmmo(id, (ammo) => ({ ...ammo, active: Math.max(0, Math.min(idx, ammo.slots.length - 1)) }));
+  };
+
+  const useAmmo = (id, delta) => {
+    // consumes on active slot (or legacy)
+    setItems((arr) =>
+      arr.map((x) => {
+        if (x.id !== id) return x;
+        const ammo = ensureAmmo(x);
+        if (!ammo) {
+          // legacy: just clamp fields if exist
+          return { ...x, ammoCurrent: Math.max(0, Math.min((x.ammoMax || 0), (x.ammoCurrent || 0) + delta)) };
+        }
+        const next = { ...ammo, slots: ammo.slots.map((s, i) => i === ammo.active
+          ? { ...s, current: Math.max(0, Math.min(s.max || 0, (Number(s.current || 0) + delta))) }
+          : s) };
+        const act = next.slots[next.active] || { current: 0, max: 0 };
+        return { ...x, ammo: next, ammoCurrent: act.current, ammoMax: act.max };
+      })
+    );
+  };
+
+  const changeAmmoAt = (id, idx, delta) => {
+    setAmmo(id, (ammo) => {
+      const slots = ammo.slots.map((s, i) => i === idx
+        ? { ...s, current: Math.max(0, Math.min(s.max || 0, (Number(s.current || 0) + delta))) }
+        : s
+      );
+      return { ...ammo, slots };
+    });
+  };
+
+  const nextAmmo = (id) => {
+    setAmmo(id, (ammo) => ({ ...ammo, active: (ammo.active + 1) % Math.max(1, ammo.slots.length) }));
+  };
 
   const addTemplate = (tpl) => {
     const tpls = {
@@ -235,6 +337,28 @@ function InventoryManager({ isDark }) {
     };
     reader.readAsText(file);
   };
+  // Exporta tudo: Árvore (chaves conhecidas), Ficha e Inventário atual em um único JSON
+  const exportAllJSON = async () => {
+    const bundle = {
+      meta: { exportedAt: new Date().toISOString() },
+      tree: {},
+      sheet: null,
+      inventory: { items },
+    };
+    try {
+      (STORAGE_KEYS || []).forEach((k) => {
+        try { bundle.tree[k] = JSON.parse(localStorage.getItem(k) || "null"); }
+        catch { bundle.tree[k] = localStorage.getItem(k); }
+      });
+    } catch {}
+    try { bundle.sheet = JSON.parse(localStorage.getItem(SHEET_KEY) || "null"); } catch {}
+    await download(
+      `hability-all-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`,
+      JSON.stringify(bundle, null, 2),
+      "application/json"
+    );
+  };
+
 
   const filtered = useMemo(() => {
     const tSearch = (filterText || "").toLowerCase();
@@ -265,7 +389,7 @@ function InventoryManager({ isDark }) {
   }, [items]);
 
   const lineCls = cx(
-    "grid grid-cols-[24px_1fr_120px_110px_120px_150px_140px_120px] gap-2 items-center py-2 px-2 rounded-lg border",
+    "grid grid-cols-[24px_1fr_120px_110px_120px_150px_140px_120px] gap-2 items-center py-2 px-2 rounded-lg border relative",
     isDark ? "border-zinc-800 hover:bg-zinc-900" : "border-slate-200 hover:bg-slate-50"
   );
 
@@ -355,6 +479,13 @@ function InventoryManager({ isDark }) {
             {t("importInventory")}
             <input type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importJSON(e.target.files[0])} />
           </label>
+          <button
+            onClick={exportAllJSON}
+            className="px-3 py-1.5 rounded-lg border"
+          >
+            {t("exportAll") || "Exportar Tudo"}
+          </button>
+
           <button
             onClick={bulkDelete}
             disabled={!selectedIds.length}
@@ -510,51 +641,167 @@ function InventoryManager({ isDark }) {
               </div>
             )}
 
-            {form.category === "weapon" && (
-              <div className={cx("rounded-lg p-3 grid md:grid-cols-4 gap-3",
-                isDark ? "border border-zinc-800" : "border border-slate-200")}>
-                <label className="text-sm md:col-span-2">
-                  {t("damage")}
-                  <input
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.damage}
-                    onChange={(e) => setForm((f) => ({ ...f, damage: e.target.value }))}
-                    placeholder="ex.: 1d8 piercing"
-                  />
-                </label>
-                <label className="text-sm md:col-span-2">
-                  {t("range")}
-                  <input
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.range}
-                    onChange={(e) => setForm((f) => ({ ...f, range: e.target.value }))}
-                    placeholder="ex.: melee, 80/320"
-                  />
-                </label>
-                <label className="text-sm">
-                  {t("ammoCurrent")}
-                  <input
-                    type="number" min={0}
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.ammoCurrent}
-                    onChange={(e) => setForm((f) => ({ ...f, ammoCurrent: Number(e.target.value) }))}
-                  />
-                </label>
-                <label className="text-sm">
-                  {t("ammoMax")}
-                  <input
-                    type="number" min={0}
-                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                    value={form.ammoMax}
-                    onChange={(e) => setForm((f) => ({ ...f, ammoMax: Number(e.target.value) }))}
-                  />
-                </label>
-              </div>
-            )}
+            
+{form.category === "weapon" && (
+  <>
+    <div className={cx("rounded-lg p-3 grid md:grid-cols-4 gap-3",
+      isDark ? "border border-zinc-800" : "border border-slate-200")}>
+      <label className="text-sm md:col-span-2">
+        {t("damage")}
+        <input
+          className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+            isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+          value={form.damage}
+          onChange={(e) => setForm((f) => ({ ...f, damage: e.target.value }))}
+          placeholder="ex.: 1d8 piercing"
+        />
+      </label>
+      <label className="text-sm md:col-span-2">
+        {t("range")}
+        <input
+          className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+            isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+          value={form.range}
+          onChange={(e) => setForm((f) => ({ ...f, range: e.target.value }))}
+          placeholder="ex.: 150/600 ft"
+        />
+      </label>
+      <label className="text-sm">
+        {t("ammoCurrent")}
+        <input
+          type="number" min={0}
+          className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+            isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+          value={form.ammoCurrent}
+          onChange={(e) => setForm((f) => ({ ...f, ammoCurrent: Number(e.target.value) }))}
+        />
+      </label>
+      <label className="text-sm">
+        {t("ammoMax")}
+        <input
+          type="number" min={0}
+          className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+            isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+          value={form.ammoMax}
+          onChange={(e) => setForm((f) => ({ ...f, ammoMax: Number(e.target.value) }))}
+        />
+      </label>
+    </div>
+
+    {/* Ammo Slots Editor */}
+    <div className={cx("rounded-lg p-3 grid gap-3",
+      isDark ? "border border-zinc-800" : "border border-slate-200")}>
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-medium">{t("ammoSlots")}</div>
+        <button
+          type="button"
+          className={cx("px-2 py-1 text-xs rounded-md border",
+            isDark ? "bg-zinc-900 border-zinc-700 hover:bg-zinc-800" : "bg-white border-slate-300 hover:bg-slate-50")}
+          onClick={() => setForm((f) => {
+            const next = { ...(f.ammo || { active: 0, slots: [] }) };
+            next.slots = [...(next.slots || []), { type: "Comum", current: 0, max: 0, note: "" }];
+            if (typeof next.active !== "number") next.active = 0;
+            return { ...f, ammo: next };
+          })}
+        >
+          {t("addSlot")}
+        </button>
+      </div>
+
+      {Array.isArray(form?.ammo?.slots) && form.ammo.slots.length > 0 ? (
+        <div className="grid gap-2">
+          {form.ammo.slots.map((s, i) => (
+            <div key={i} className="grid md:grid-cols-12 gap-2 items-end">
+              <label className="text-[12px] md:col-span-1 flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="activeAmmoEditor"
+                  checked={Number(form?.ammo?.active || 0) === i}
+                  onChange={() => setForm((f) => ({ ...f, ammo: { ...(f.ammo || { active: 0, slots: [] }), active: i } }))}
+                />
+                <span className="opacity-70">{t("active")}</span>
+              </label>
+              <label className="text-sm md:col-span-3">
+                {t("type")}
+                <input
+                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                  value={s.type || ""}
+                  onChange={(e) => setForm((f) => {
+                    const next = { ...(f.ammo || { active: 0, slots: [] }) };
+                    next.slots = next.slots.map((ss, idx) => idx === i ? { ...ss, type: e.target.value } : ss);
+                    return { ...f, ammo: next };
+                  })}
+                />
+              </label>
+              <label className="text-sm md:col-span-2">
+                {t("current")}
+                <input
+                  type="number" min={0}
+                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                  value={Number(s.current || 0)}
+                  onChange={(e) => setForm((f) => {
+                    const next = { ...(f.ammo || { active: 0, slots: [] }) };
+                    next.slots = next.slots.map((ss, idx) => idx === i ? { ...ss, current: Math.max(0, Number(e.target.value || 0)) } : ss);
+                    return { ...f, ammo: next };
+                  })}
+                />
+              </label>
+              <label className="text-sm md:col-span-2">
+                {t("max")}
+                <input
+                  type="number" min={0}
+                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                  value={Number(s.max || 0)}
+                  onChange={(e) => setForm((f) => {
+                    const next = { ...(f.ammo || { active: 0, slots: [] }) };
+                    next.slots = next.slots.map((ss, idx) => idx === i ? { ...ss, max: Math.max(0, Number(e.target.value || 0)) } : ss);
+                    return { ...f, ammo: next };
+                  })}
+                />
+              </label>
+              <div className="md:col-span-4 text-sm">
+  <label className="text-sm">{t("slotNote")}</label>
+  <div className="mt-1 flex items-center gap-2">
+    <input
+      className={cx("flex-1 border rounded-md px-2 py-1.5",
+        isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+      value={s.note || ""}
+      onChange={(e) => setForm((f) => {
+        const next = { ...(f.ammo || { active: 0, slots: [] }) };
+        next.slots = next.slots.map((ss, idx) => idx === i ? { ...ss, note: e.target.value } : ss);
+        return { ...f, ammo: next };
+      })}
+    />
+    <button
+      type="button"
+      className={cx("shrink-0 px-3 py-1.5 text-xs rounded-md border",
+        isDark ? "bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-red-400 hover:text-red-300" : "bg-white border-slate-300 hover:bg-slate-50 text-red-600")}
+      onClick={() => setForm((f) => {
+        const next = { ...(f.ammo || { active: 0, slots: [] }) };
+        const before = next.slots || [];
+        const newSlots = before.filter((_, idx) => idx !== i);
+        const newActive = Math.min(Math.max(0, (next.active || 0) - (i <= (next.active || 0) ? 1 : 0)), Math.max(0, newSlots.length - 1));
+        return { ...f, ammo: { active: newActive, slots: newSlots } };
+      })}
+      title={t("remove")}
+    >
+      {t("remove")}
+    </button>
+  </div>
+</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-xs opacity-70">{t("noSlotsYet")}</div>
+      )}
+    </div>
+  </>
+)}
+
 
             {form.category === "dice" && (
               <div className={cx("rounded-lg p-3 grid md:grid-cols-3 gap-3",
@@ -697,7 +944,14 @@ function InventoryManager({ isDark }) {
           if (x.category === "weapon") {
             if (x.damage) props.push(x.damage);
             if (x.range) props.push(x.range);
-            if (x.ammoMax) props.push(`${t("ammoCurrent").split(" ")[0]} ${x.ammoCurrent || 0}/${x.ammoMax}`);
+            const ammoData = ensureAmmo(x);
+            if (ammoData) {
+              const s = ammoData.slots[ammoData.active] || {};
+              const extra = Math.max(0, ammoData.slots.length - 1);
+              props.push(`${(s.type || "Comum")} ${Number(s.current || 0)}/${Number(s.max || 0)}${extra ? " • +" + extra : ""}`);
+            } else if (x.ammoMax) {
+              props.push(`${t("ammoCurrent").split(" ")[0]} ${x.ammoCurrent || 0}/${x.ammoMax}`);
+            }
           }
           if (x.category === "dice") {
             props.push(`${x.label || "Tokens"}: ${x.dieCount} ${x.die}`);
@@ -767,8 +1021,16 @@ function InventoryManager({ isDark }) {
                   {x.attuned ? t("unattune") : t("attune")}
                 </button>
 
-                {x.category === "weapon" && x.ammoMax > 0 && (
+                {x.category === "weapon" && ensureAmmo(x) && (
                   <>
+                    <button
+                      className="px-2 py-1 text-xs rounded-md border bg-white/5"
+                      onClick={() => setAmmoMenuOpenId(ammoMenuOpenId === x.id ? null : x.id)}
+                      title="Munições"
+                    >
+                      {(ensureAmmo(x).slots[ensureAmmo(x).active]?.type || "Comum")} {ensureAmmo(x).slots[ensureAmmo(x).active]?.current || 0}/{ensureAmmo(x).slots[ensureAmmo(x).active]?.max || 0} ▾
+                    </button>
+
                     <button
                       className="px-2 py-1 text-xs rounded-md bg-slate-700 text-white hover:bg-slate-800"
                       onClick={() => useAmmo(x.id, -1)}
@@ -783,6 +1045,50 @@ function InventoryManager({ isDark }) {
                     >
                       {t("ammoPlus")}
                     </button>
+                    {ensureAmmo(x).slots.length > 1 && (
+                      <button
+                        className="px-2 py-1 text-xs rounded-md border"
+                        onClick={() => nextAmmo(x.id)}
+                        title="Próxima munição"
+                      >
+                        Próx. munição
+                      </button>
+                    )}
+
+                    {ammoMenuOpenId === x.id && (
+                      <div ref={ammoMenuRef} className={cx("absolute z-20 mt-1 right-4 w-72 max-h-64 overflow-auto rounded-xl border shadow",
+                        isDark ? "border-zinc-700 bg-zinc-900 text-zinc-200" : "border-slate-200 bg-white text-gray-800")}>
+                        <div className="p-2 text-xs opacity-70">Munições</div>
+                        <div className="divide-y divide-black/5">
+                          {ensureAmmo(x).slots.map((s, i) => (
+                            <div key={i} className="flex items-center justify-between gap-2 p-2">
+                              <label className="flex items-center gap-2">
+                                <input
+                                  type="radio"
+                                  name={`ammo-${x.id}`}
+                                  checked={ensureAmmo(x).active === i}
+                                  onChange={() => setActiveAmmoSlot(x.id, i)}
+                                />
+                                <span className="text-sm">{s.type || "Comum"}</span>
+                              </label>
+                              <div className="text-xs opacity-75">{Number(s.current || 0)}/{Number(s.max || 0)}</div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  className="px-2 py-0.5 text-xs rounded-md border"
+                                  onClick={() => changeAmmoAt(x.id, i, -1)}
+                                  title="-1"
+                                >-1</button>
+                                <button
+                                  className="px-2 py-0.5 text-xs rounded-md border"
+                                  onClick={() => changeAmmoAt(x.id, i, +1)}
+                                  title="+1"
+                                >+1</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
 
