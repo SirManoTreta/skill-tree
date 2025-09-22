@@ -744,7 +744,7 @@ function HPBox({ isDark, className = "", max, current, temp, onSetMax, onSetCurr
       {/* Display (compacto) */}
       <div className="text-center min-w-[130px] flex-1">
         <div className="text-sm font-medium">{t("hitPoints")}</div>
-        <div className="font-mono text-xl md:text-2xl leading-none mt-1">
+        <div className="font-mono text-xl md:text-3xl leading-none mt-1">
           {current} <span className="opacity-60 text-base md:text-lg">/</span> {max}
           {temp > 0 && <span className={cx("ml-1 text-sm md:text-base", soft)}>(+{temp})</span>}
         </div>

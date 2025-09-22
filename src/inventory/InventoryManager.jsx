@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY } from "../constants/storage";
+import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY, SHEET_KEY } from "../constants/storage";
 import { ITEM_CATEGORIES, ARMOR_TYPES } from "../constants/dnd";
 import { cx, uid, parseTags, formatTags, getLabel, download } from "../utils/misc";
 import { t, getLang, setLang } from "../utils/i18n";
@@ -337,6 +337,28 @@ const editItem = (it) => {
     };
     reader.readAsText(file);
   };
+  // Exporta tudo: Árvore (chaves conhecidas), Ficha e Inventário atual em um único JSON
+  const exportAllJSON = async () => {
+    const bundle = {
+      meta: { exportedAt: new Date().toISOString() },
+      tree: {},
+      sheet: null,
+      inventory: { items },
+    };
+    try {
+      (STORAGE_KEYS || []).forEach((k) => {
+        try { bundle.tree[k] = JSON.parse(localStorage.getItem(k) || "null"); }
+        catch { bundle.tree[k] = localStorage.getItem(k); }
+      });
+    } catch {}
+    try { bundle.sheet = JSON.parse(localStorage.getItem(SHEET_KEY) || "null"); } catch {}
+    await download(
+      `hability-all-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`,
+      JSON.stringify(bundle, null, 2),
+      "application/json"
+    );
+  };
+
 
   const filtered = useMemo(() => {
     const tSearch = (filterText || "").toLowerCase();
@@ -457,6 +479,13 @@ const editItem = (it) => {
             {t("importInventory")}
             <input type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importJSON(e.target.files[0])} />
           </label>
+          <button
+            onClick={exportAllJSON}
+            className="px-3 py-1.5 rounded-lg border"
+          >
+            {t("exportAll") || "Exportar Tudo"}
+          </button>
+
           <button
             onClick={bulkDelete}
             disabled={!selectedIds.length}

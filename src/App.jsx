@@ -1,7 +1,8 @@
 import SkillNode from "./components/SkillNode";
+import GroupNode from "./components/GroupNode";
 import InventoryManager from "./inventory/InventoryManager";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY, SHEET_KEY } from "./constants/storage";
+import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY } from "./constants/storage";
 import { NODE_TYPES, CLASSES_5E, ACTION_TYPES, USES_TYPES } from "./constants/dnd";
 import { cx, uid, download, parseTags, formatTags, getLabel } from "./utils/misc";
 import { buildGraph, detectCycle, topologicalLayers } from "./utils/graph";
@@ -20,7 +21,7 @@ import ReactFlow, {
 } from "reactflow";
 import 'reactflow/dist/style.css';
 
-const nodeTypes = { skill: SkillNode };
+const nodeTypes = { skill: SkillNode, group: GroupNode };
 
 const defaultRoot = () => ({
   id: "root",
@@ -83,6 +84,7 @@ export default function SkillTreeBuilderDnd() {
       return null;
     }
   });
+  const [selectedNodeIds, setSelectedNodeIds] = useState([]);
   const [selectedEdgeIds, setSelectedEdgeIds] = useState([]);
   const [filter, setFilter] = useState("");
   const [rfInstance, setRfInstance] = useState(null);
@@ -155,11 +157,12 @@ export default function SkillTreeBuilderDnd() {
   }, [edges, nodes]);
 
   const onSelectionChange = useCallback((sel) => {
-    setSelectedNodeId(sel?.nodes?.[0]?.id ?? null);
+    const ids = sel?.nodes?.map((n) => n.id) ?? [];
+    setSelectedNodeIds(ids);
+    setSelectedNodeId(ids[0] ?? null);
     setSelectedEdgeIds(sel?.edges?.map((e) => e.id) ?? []);
   }, []);
-
-  const selectedNode = useMemo(
+const selectedNode = useMemo(
     () => nodes.find((n) => n.id === selectedNodeId) || null,
     [nodes, selectedNodeId]
   );
@@ -333,6 +336,53 @@ export default function SkillTreeBuilderDnd() {
     );
   };
 
+  // —————————————————————————————————————————————
+  // Grupos: abrir/fechar, agrupar e desagrupar
+  // —————————————————————————————————————————————
+  const toggleGroupCollapse = useCallback((groupId) => {
+    setNodes((nds) =>
+      nds.map((n) => {
+        if (n.id !== groupId || n.type !== "group") return n;
+        return { ...n, data: { ...n.data, collapsed: !n.data?.collapsed } };
+      })
+    );
+  }, []);
+
+  const groupSelection = useCallback(() => {
+    const members = nodes.filter((n) => selectedNodeIds.includes(n.id) && n.type !== "group");
+    if (members.length === 0) return;
+    const cx = members.reduce((s, n) => s + (n.position?.x || 0), 0) / members.length;
+    const cy = members.reduce((s, n) => s + (n.position?.y || 0), 0) / members.length;
+    const id = uid();
+    const groupNode = {
+      id,
+      type: "group",
+      position: { x: cx, y: cy },
+      data: { name: "Grupo", color: "#6366f1", collapsed: true, tags: ["group"] },
+    };
+    setNodes((nds) => [
+      ...nds.map((n) =>
+        members.some((m) => m.id === n.id) ? { ...n, data: { ...n.data, groupId: id } } : n
+      ),
+      groupNode,
+    ]);
+    setSelectedNodeId(id);
+  }, [nodes, selectedNodeIds]);
+
+  const ungroupSelection = useCallback(() => {
+    const ids = new Set(selectedNodeIds);
+    setNodes((nds) => {
+      const updated = nds.map((n) =>
+        ids.has(n.id) && n.type !== "group" ? { ...n, data: { ...n.data, groupId: undefined } } : n
+      );
+      const usedGroupIds = new Set(
+        updated.filter((n) => n.type !== "group" && n.data?.groupId).map((n) => n.data.groupId)
+      );
+      return updated.filter((n) => n.type !== "group" || usedGroupIds.has(n.id));
+    });
+  }, [selectedNodeIds]);
+
+
   // Buscar e focar no primeiro resultado quando o usuário apertar Enter na busca
   const focusFirstMatch = useCallback(() => {
     const term = (filter || "").trim().toLowerCase();
@@ -394,23 +444,45 @@ export default function SkillTreeBuilderDnd() {
 
   const mappedNodes = useMemo(() => {
     const term = (filter || "").trim().toLowerCase();
-    return nodes.map((n) => {
-      const matches =
-        !term ||
-        n.data?.name?.toLowerCase().includes(term) ||
-        (n.data?.tags || []).some((t) => (t || "").toLowerCase().includes(term)) ||
-        (n.data?.type || "").toLowerCase().includes(term);
-
-      const nextDim = term ? !matches : false;
-      const prev = n.data || {};
-
-      if (prev.__theme === theme && !!prev.__dim === !!nextDim) return n;
-
-      return { ...n, data: { ...prev, __theme: theme, __dim: nextDim } };
+    const collapsed = new Set(nodes.filter((n) => n.type === "group" && n.data?.collapsed).map((n) => n.id));
+    const childCount = new Map();
+    nodes.forEach((n) => {
+      const gid = n.data?.groupId;
+      if (gid) childCount.set(gid, (childCount.get(gid) || 0) + 1);
     });
+    return nodes
+      .filter((n) => {
+        if (n.type !== "group" && n.data?.groupId && collapsed.has(n.data.groupId)) return false;
+        return true;
+      })
+      .map((n) => {
+        const matches =
+          !term ||
+          n.data?.name?.toLowerCase().includes(term) ||
+          (n.data?.tags || []).some((t) => (t || "").toLowerCase().includes(term)) ||
+          (n.data?.type || "").toLowerCase().includes(term);
+
+        const nextDim = term ? !matches : false;
+        const prev = n.data || {};
+        const extra = n.type === "group" ? { childCount: childCount.get(n.id) || 0 } : {};
+
+        if (prev.__theme === theme && !!prev.__dim === !!nextDim && prev.childCount === extra.childCount) return n;
+
+        return { ...n, data: { ...prev, ...extra, __theme: theme, __dim: nextDim } };
+      });
   }, [nodes, theme, filter]);
 
-  return (
+  const mappedEdges = useMemo(() => {
+    const collapsed = new Set(nodes.filter((n) => n.type === "group" && n.data?.collapsed).map((n) => n.id));
+    const hiddenNodeIds = new Set(
+      nodes
+        .filter((n) => n.type !== "group" && n.data?.groupId && collapsed.has(n.data.groupId))
+        .map((n) => n.id)
+    );
+    return edges.filter((e) => !hiddenNodeIds.has(e.source) && !hiddenNodeIds.has(e.target));
+  }, [nodes, edges]);
+
+return (
     <div className={cx("w-full h-screen flex flex-col", isDark ? "bg-zinc-900 text-zinc-100" : "bg-slate-50 text-slate-900")}>
       {/* Barra superior global */}
       <div className="relative z-30 p-3 flex items-center gap-2">
@@ -652,6 +724,20 @@ export default function SkillTreeBuilderDnd() {
             {t("duplicateNode")}
           </button>
           <button
+            onClick={groupSelection}
+            className="px-3 py-1.5 rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50"
+            disabled={(selectedNodeIds?.length ?? 0) === 0}
+          >
+            Agrupar seleção
+          </button>
+          <button
+            onClick={ungroupSelection}
+            className="px-3 py-1.5 rounded-lg bg-violet-700 text-white hover:bg-violet-800 disabled:opacity-50"
+            disabled={(selectedNodeIds?.length ?? 0) === 0}
+          >
+            Remover do grupo
+          </button>
+          <button
             onClick={deleteSelectedEdges}
             disabled={!selectedEdgeIds.length}
             className="px-3 py-1.5 rounded-lg bg-red-700 text-white hover:bg-red-800 disabled:opacity-50"
@@ -693,7 +779,7 @@ export default function SkillTreeBuilderDnd() {
               selectionOnDrag
               deleteKeyCode={null}
               nodes={mappedNodes}
-              edges={edges}
+              edges={mappedEdges}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
@@ -711,6 +797,7 @@ export default function SkillTreeBuilderDnd() {
               }}
               onSelectionChange={onSelectionChange}
               onEdgeDoubleClick={(e, edge) => setEdges((eds) => eds.filter((x) => x.id !== edge.id))}
+              onNodeDoubleClick={(e, node) => { if (node?.type === "group") toggleGroupCollapse(node.id); }}
               fitView
               nodeTypes={nodeTypes}
               connectionLineStyle={{ strokeWidth: 2 }}
@@ -757,7 +844,57 @@ export default function SkillTreeBuilderDnd() {
                     Use <em>Layout automático</em> para organizar em camadas por ordem de desbloqueio.
                   </p>
                 </div>
-              ) : (
+              
+) : (
+                selectedNode.type === "group" ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold">Editar Grupo</h3>
+                      <button
+                        onClick={() => toggleGroupCollapse(selectedNode.id)}
+                        className="px-2 py-1 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700"
+                      >
+                        {selectedNode.data?.collapsed ? "Abrir (expandir)" : "Fechar (recolher)"}
+                      </button>
+                    </div>
+                    <label className="text-sm">
+                      Nome do grupo
+                      <input
+                        className={cx(
+                          "mt-1 w-full border rounded-md px-2 py-1.5",
+                          isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300"
+                        )}
+                        value={selectedNode.data?.name || ""}
+                        onChange={(e) =>
+                          setNodes((nds) =>
+                            nds.map((n) =>
+                              n.id === selectedNode.id ? { ...n, data: { ...n.data, name: e.target.value } } : n
+                            )
+                          )
+                        }
+                        placeholder="Ex.: Kit do Ladino"
+                      />
+                    </label>
+                    <label className="text-sm">
+                      Cor
+                      <input
+                        type="color"
+                        className={cx("mt-1 w-full h-10 border rounded-md", isDark ? "bg-zinc-900 border-zinc-700" : "bg-white border-slate-300")}
+                        value={selectedNode.data?.color || "#6366f1"}
+                        onChange={(e) =>
+                          setNodes((nds) =>
+                            nds.map((n) =>
+                              n.id === selectedNode.id ? { ...n, data: { ...n.data, color: e.target.value } } : n
+                            )
+                          )
+                        }
+                      />
+                    </label>
+                    <div className={cx("text-sm", isDark ? "text-zinc-300" : "text-gray-700")}>
+                      Nós no grupo: <b>{nodes.filter((n)=>n.type!=="group" && n.data?.groupId===selectedNode.id).length}</b>
+                    </div>
+                  </div>
+                ) : (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold">{t("editNode")}</h3>
@@ -1065,6 +1202,7 @@ export default function SkillTreeBuilderDnd() {
                     </ul>
                   </div>
                 </div>
+              )
               )}
 
               <div className="pt-4 border-t space-y-2 text-sm">
