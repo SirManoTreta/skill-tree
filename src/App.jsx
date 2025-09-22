@@ -339,7 +339,73 @@ ${d.description}
     setTimeout(() => fit(), 50);
   };
 
-  const patchSelected = (patch) => {
+  
+
+  // Recebe itens do Inventário e cria nós à direita em área vazia
+  const addItemsToTree = (itemsFromInventory) => {
+    try {
+      const xGap = 320, yGap = 180, perCol = 4;
+      // Compute base at the rightmost X
+      const maxX = nodes.reduce((m, n) => Math.max(m, Number(n?.position?.x || 0)), 0);
+      const baseX = (nodes.length ? maxX + xGap : xGap);
+      const baseY = 0;
+
+      const categoryTag = (cat) => {
+        switch ((cat || '').toLowerCase()) {
+          case 'armor': return 'Armaduras';
+          case 'weapon': return 'Armas / Munição';
+          case 'keys': return 'Chaves';
+          case 'dice': return 'Dados';
+          case 'misc': default: return 'Miscelânia';
+        }
+      };
+      const shortText = (it) => {
+        const bits = [];
+        if (Number(it.ac || 0)) bits.push(`AC +${it.ac}`);
+        if (it.notes) bits.push(String(it.notes));
+        return bits.join(' • ');
+      };
+      const gridPos = (idx) => {
+        const col = idx % perCol;
+        const row = Math.floor(idx / perCol);
+        return { x: baseX + col * xGap, y: baseY + row * yGap };
+      };
+
+      const existingIds = new Set(nodes.map(n => n.id));
+      const toAdd = (itemsFromInventory || []).map((it, i) => ({
+        id: `item-${it.id}`,
+        type: "skill",
+        position: gridPos(i),
+        data: {
+          name: it.name || "Item",
+          type: "Other",
+          dndClass: "Other",
+          levelReq: 1,
+          color: "#6366f1",
+          prereqMode: "all",
+          shortText: shortText(it),
+          tags: [
+            categoryTag(it.category),
+            it.equipped ? "Equipped" : null,
+            it.attuned ? "Attuned" : null,
+          ].filter(Boolean),
+        },
+      })).filter(n => !existingIds.has(n.id));
+
+      if (!toAdd.length) {
+        alert("Nenhum nó novo para adicionar — itens já existem na árvore.");
+        return;
+      }
+
+      setNodes((nds) => [...nds, ...toAdd]);
+      // keep edges
+      setTimeout(() => fit(), 40);
+    } catch (e) {
+      console.error(e);
+      alert("Falha ao adicionar itens na árvore.");
+    }
+  };
+const patchSelected = (patch) => {
     if (!selectedNodeId) return;
     setNodes((nds) => nds.map((n) => (n.id === selectedNodeId ? { ...n, data: { ...n.data, ...patch } } : n)));
   };
@@ -1319,7 +1385,7 @@ return (
             </aside>
           </>
         ) : page === "inventory" ? (
-          <InventoryManager isDark={isDark} />
+          <InventoryManager isDark={isDark} onExportToTree={addItemsToTree} />
         ) : (
           <CharacterSheet isDark={isDark} />
         )}

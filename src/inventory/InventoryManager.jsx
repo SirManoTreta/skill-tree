@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY, SHEET_KEY } from "../constants/storage";
+import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY } from "../constants/storage";
 import { ITEM_CATEGORIES, ARMOR_TYPES } from "../constants/dnd";
 import { cx, uid, parseTags, formatTags, getLabel, download } from "../utils/misc";
 import { t, getLang, setLang } from "../utils/i18n";
@@ -21,7 +21,7 @@ const gpToPretty = (gp) => {
   return `${(gp * 100).toFixed(0)} cp`;
 };
 
-function InventoryManager({ isDark }) {
+function InventoryManager({ isDark, onExportToTree }) {
   const [items, setItems] = useState(() => {
     try {
       const raw = localStorage.getItem(INVENTORY_KEY);
@@ -337,30 +337,116 @@ const editItem = (it) => {
     };
     reader.readAsText(file);
   };
-  // Exporta tudo: Árvore (chaves conhecidas), Ficha e Inventário atual em um único JSON
-  const exportAllJSON = async () => {
-    const bundle = {
-      meta: { exportedAt: new Date().toISOString() },
-      tree: {},
-      sheet: null,
-      inventory: { items },
-    };
+
+  
+
+  
+  const exportToTree = () => {
+    // If App provided a callback, use it for live merge without refresh
+    if (typeof onExportToTree === "function") {
+      const picked = (selectedIds.length ? items.filter(i => selectedIds.includes(i.id)) : items);
+      onExportToTree(picked);
+      alert(`Enviado para a Árvore: ${picked.length} nó(s).`);
+      return;
+    }
+
     try {
-      (STORAGE_KEYS || []).forEach((k) => {
-        try { bundle.tree[k] = JSON.parse(localStorage.getItem(k) || "null"); }
-        catch { bundle.tree[k] = localStorage.getItem(k); }
-      });
-    } catch {}
-    try { bundle.sheet = JSON.parse(localStorage.getItem(SHEET_KEY) || "null"); } catch {}
-    await download(
-      `hability-all-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`,
-      JSON.stringify(bundle, null, 2),
-      "application/json"
-    );
+      // Load existing tree from storage
+      let tree = null;
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS[0]);
+        if (raw) tree = JSON.parse(raw);
+      } catch {}
+      let nodes = Array.isArray(tree?.nodes) ? [...tree.nodes] : [];
+      let edges = Array.isArray(tree?.edges) ? [...tree.edges] : [];
+
+      // Ensure a root if tree is empty, to keep the app consistent
+      if (nodes.length === 0) {
+        nodes.push({
+          id: "root",
+          type: "skill",
+          position: { x: 0, y: 0 },
+          data: {
+            name: "Nível 1 / Raiz",
+            type: "Other",
+            dndClass: "Other",
+            levelReq: 1,
+            color: "#ff0000ff",
+            prereqMode: "all",
+            shortText: "Ponto de partida da árvore.",
+            tags: ["D&D"],
+          },
+        });
+      }
+
+      // Compute base position to the right of current content
+      const maxX = nodes.reduce((m, n) => Math.max(m, Number(n?.position?.x || 0)), 0);
+      const xGap = 320, yGap = 180, perCol = 4;
+      const baseX = maxX + xGap;
+      const baseY = 0;
+
+      // Helper to map items -> nodes
+      const categoryTag = (cat) => {
+        switch ((cat || '').toLowerCase()) {
+          case 'armor': return 'Armaduras';
+          case 'weapon': return 'Armas / Munição';
+          case 'keys': return 'Chaves';
+          case 'dice': return 'Dados';
+          case 'misc': default: return 'Miscelânia';
+        }
+      };
+      const shortText = (it) => {
+        const bits = [];
+        if (Number(it.ac || 0)) bits.push(`AC +${it.ac}`);
+        if (it.notes) bits.push(String(it.notes));
+        return bits.join(' • ');
+      };
+      const gridPos = (idx) => {
+        const col = idx % perCol;
+        const row = Math.floor(idx / perCol);
+        return { x: baseX + col * xGap, y: baseY + row * yGap };
+      };
+
+      const existingIds = new Set(nodes.map(n => n.id));
+      const picked = (selectedIds.length ? items.filter(i => selectedIds.includes(i.id)) : items);
+      const newNodes = picked.map((it, i) => ({
+        id: `item-${it.id}`,
+        type: "skill",
+        position: gridPos(i),
+        data: {
+          name: it.name || "Item",
+          type: "Other",
+          dndClass: "Other",
+          levelReq: 1,
+          color: "#6366f1",
+          prereqMode: "all",
+          shortText: shortText(it),
+          tags: [
+            categoryTag(it.category),
+            it.equipped ? "Equipped" : null,
+            it.attuned ? "Attuned" : null,
+          ].filter(Boolean),
+        },
+      })).filter(n => !existingIds.has(n.id));
+
+      if (newNodes.length === 0) {
+        alert("Nenhum nó novo para adicionar — itens já existem na árvore.");
+        return;
+      }
+
+      const merged = { nodes: [...nodes, ...newNodes], edges };
+      try {
+        localStorage.setItem(STORAGE_KEYS[0], JSON.stringify(merged));
+      } catch {}
+
+      alert(`Enviado para a Árvore: ${newNodes.length} nós adicionados.`);
+    } catch (e) {
+      console.error(e);
+      alert("Falha ao exportar para a árvore.");
+    }
   };
 
-
-  const filtered = useMemo(() => {
+const filtered = useMemo(() => {
     const tSearch = (filterText || "").toLowerCase();
     let out = items.filter((x) => {
       const byCat = filterCat === "all" || x.category === filterCat;
@@ -417,9 +503,7 @@ const editItem = (it) => {
         >
           <option value="all">{t("allCategories")}</option>
           {ITEM_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-        </select>
-
-        <div className="flex items-center gap-1">
+        </select>        <div className="flex items-center gap-1">
           <label className="text-sm opacity-70">{t("sortBy")}</label>
           <select
             className={cx("px-3 py-1.5 rounded-lg border",
@@ -479,13 +563,7 @@ const editItem = (it) => {
             {t("importInventory")}
             <input type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importJSON(e.target.files[0])} />
           </label>
-          <button
-            onClick={exportAllJSON}
-            className="px-3 py-1.5 rounded-lg border"
-          >
-            {t("exportAll") || "Exportar Tudo"}
-          </button>
-
+          <button onClick={exportToTree} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">{t("sendToTree")}</button>
           <button
             onClick={bulkDelete}
             disabled={!selectedIds.length}
