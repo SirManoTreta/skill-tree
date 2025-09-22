@@ -10,7 +10,7 @@ const SKILLS = [
   { id: "animalHandling", abl: "WIS" },
   { id: "arcana", abl: "INT" },
   { id: "athletics", abl: "STR" },
-  { id: "decesption", abl: "CHA" },
+  { id: "deception", abl: "CHA" },
   { id: "history", abl: "INT" },
   { id: "insight", abl: "WIS" },
   { id: "intimidation", abl: "CHA" },
@@ -340,10 +340,10 @@ export default function CharacterSheet({ isDark }) {
         <div className="lg:col-span-9 space-y-2 md:space-y-3">
           {/* QUADRO CENTRAL SUPERIOR */}
           <div className={cx(
-            "rounded-2xl border p-3 md:p-4 flex justify-center",
+            "rounded-2xl border p-3 md:p-4 flex justify-left",
             isDark ? "bg-zinc-950 border-zinc-800" : "bg-white border-slate-200"
           )}>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 items-start gap-2 md:gap-3 w-full max-w-[1250px]">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 items-start gap-2 md:gap-3 w-full max-w-[1300px]">
               <HPBox
                 isDark={isDark}
                 className="col-span-2"
@@ -806,7 +806,7 @@ function HPBox({ isDark, className = "", max, current, temp, onSetMax, onSetCurr
           >−</button>
         </div>
 
-        <span className={chip}>{t("hpAdjust")}</span>
+        {/*<span className={chip}>{t("hpAdjust")}</span>*/}
       </div>
     </div>
   );
