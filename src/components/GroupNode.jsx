@@ -14,7 +14,7 @@ export default function GroupNode({ data, selected }) {
         "relative rounded-full border grid place-items-center",
         "w-[128px] h-[128px] shadow-lg",
         isDark ? "bg-zinc-950 border-zinc-800 text-zinc-100" : "bg-white border-slate-200 text-slate-900",
-        selected ? "ring-2 ring-offset-2 ring-indigo-500" : "",
+        selected ? "ring-2 ring-offset-2 ring-indigo-500" : (data?.__hover ? "ring-2 ring-indigo-400 animate-pulse" : ""),
       ].join(" ")}
       title={data?.collapsed ? "Duplo clique: abrir grupo" : "Duplo clique: recolher grupo"}
     >

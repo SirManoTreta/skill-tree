@@ -86,6 +86,7 @@ export default function SkillTreeBuilderDnd() {
   });
   const [selectedNodeIds, setSelectedNodeIds] = useState([]);
   const [selectedEdgeIds, setSelectedEdgeIds] = useState([]);
+  const [dragOverGroupId, setDragOverGroupId] = useState(null);
   const [filter, setFilter] = useState("");
   const [rfInstance, setRfInstance] = useState(null);
   useEffect(() => {
@@ -247,40 +248,57 @@ const selectedNode = useMemo(
     const cycle = detectCycle(nodes, edges);
     const layers = topologicalLayers(nodes, edges);
     const map = new Map(nodes.map((n) => [n.id, n]));
-    let md = `# Árvore de Habilidades — D&D 5e\n\n`;
-    if (cycle) md += `> **Aviso:** ciclo detectado: ${cycle.join(" → ")}\n\n`;
+    let md = `# Árvore de Habilidades — D&D 5e
+
+`;
+    if (cycle) md += `> **Aviso:** ciclo detectado: ${cycle.join(" → ")}
+
+`;
     layers.forEach((layer, i) => {
-      md += `## Camada ${i + 1}\n\n`;
+      md += `## Camada ${i + 1}
+
+`;
       layer.forEach((id) => {
         const n = map.get(id);
         if (!n) return;
         const d = n.data || {};
         const tags = formatTags(d.tags);
-        md += `### ${d.name || id}\n`;
+        md += `### ${d.name || id}
+`;
         md += `*Tipo:* ${getLabel(NODE_TYPES, d.type || "Feat")}  |  *Classe:* ${getLabel(
           CLASSES_5E,
           d.dndClass || "—"
         )}  |  *Nível mínimo:* ${d.levelReq || 1}  |  *Modo de Pré-req:* ${
           d.prereqMode === "any" ? "Qualquer um" : "Todos"
-        }\n`;
+        }
+`;
         const incoming = edges
           .filter((e) => e.target === id)
           .map((e) => map.get(e.source)?.data?.name || e.source);
-        if (incoming.length) md += `*Pré-requisitos:* ${incoming.join(", ")}\n`;
+        if (incoming.length) md += `*Pré-requisitos:* ${incoming.join(", ")}
+`;
         const abl = d.abilityReq || {};
         const ablText = Object.entries(abl)
           .filter(([, v]) => (v || 0) > 0)
           .map(([k, v]) => `${k} ${v}+`)
           .join(", ");
-        if (ablText) md += `*Atributos mínimos:* ${ablText}\n`;
+        if (ablText) md += `*Atributos mínimos:* ${ablText}
+`;
         if (d.actionType) md += `*Ação:* ${getLabel(ACTION_TYPES, d.actionType)}  |  *Usos:* ${getLabel(
           USES_TYPES,
           d.uses || "—"
-        )}\n`;
-        if (tags) md += `*Tags:* ${tags}\n`;
-        if (d.shortText) md += `\n${d.shortText}\n`;
-        if (d.description) md += `\n${d.description}\n`;
-        md += `\n`;
+        )}
+`;
+        if (tags) md += `*Tags:* ${tags}
+`;
+        if (d.shortText) md += `
+${d.shortText}
+`;
+        if (d.description) md += `
+${d.description}
+`;
+        md += `
+`;
       });
     });
     await download(
@@ -349,25 +367,38 @@ const selectedNode = useMemo(
   }, []);
 
   const groupSelection = useCallback(() => {
-    const members = nodes.filter((n) => selectedNodeIds.includes(n.id) && n.type !== "group");
-    if (members.length === 0) return;
-    const cx = members.reduce((s, n) => s + (n.position?.x || 0), 0) / members.length;
-    const cy = members.reduce((s, n) => s + (n.position?.y || 0), 0) / members.length;
-    const id = uid();
-    const groupNode = {
-      id,
-      type: "group",
-      position: { x: cx, y: cy },
-      data: { name: "Grupo", color: "#6366f1", collapsed: true, tags: ["group"] },
-    };
-    setNodes((nds) => [
-      ...nds.map((n) =>
-        members.some((m) => m.id === n.id) ? { ...n, data: { ...n.data, groupId: id } } : n
-      ),
-      groupNode,
-    ]);
-    setSelectedNodeId(id);
-  }, [nodes, selectedNodeIds]);
+  // Se houver um grupo na seleção, adiciona os demais nós nele.
+  const selectedGroups = nodes.filter((n) => selectedNodeIds.includes(n.id) && n.type === "group");
+  const members = nodes.filter((n) => selectedNodeIds.includes(n.id) && n.type !== "group");
+  if (members.length === 0) return;
+  if (selectedGroups.length >= 1) {
+    const gid = selectedGroups[0].id;
+    setNodes((nds) =>
+      nds.map((n) =>
+        members.some((m) => m.id === n.id) ? { ...n, data: { ...n.data, groupId: gid } } : n
+      )
+    );
+    setSelectedNodeId(gid);
+    return;
+  }
+  // Caso contrário, cria um novo grupo normalmente.
+  const cx = members.reduce((s, n) => s + (n.position?.x || 0), 0) / members.length;
+  const cy = members.reduce((s, n) => s + (n.position?.y || 0), 0) / members.length;
+  const id = uid();
+  const groupNode = {
+    id,
+    type: "group",
+    position: { x: cx, y: cy },
+    data: { name: "Grupo", color: "#6366f1", collapsed: true, tags: ["group"] },
+  };
+  setNodes((nds) => [
+    ...nds.map((n) =>
+      members.some((m) => m.id === n.id) ? { ...n, data: { ...n.data, groupId: id } } : n
+    ),
+    groupNode,
+  ]);
+  setSelectedNodeId(id);
+}, [nodes, selectedNodeIds]);
 
   const ungroupSelection = useCallback(() => {
     const ids = new Set(selectedNodeIds);
@@ -381,6 +412,42 @@ const selectedNode = useMemo(
       return updated.filter((n) => n.type !== "group" || usedGroupIds.has(n.id));
     });
   }, [selectedNodeIds]);
+
+// Drag-over em grupos: quando arrastar um nó comum sobre a "bolinha" de um grupo, destaca e, ao soltar, move para o grupo.
+const getNodeCenter = useCallback((n) => {
+  const w = n.type === "group" ? 128 : 260;
+  const h = n.type === "group" ? 128 : 120;
+  return { x: (n.position?.x || 0) + w / 2, y: (n.position?.y || 0) + h / 2 };
+}, []);
+
+const getGroupAtPoint = useCallback((x, y) => {
+  const groups = nodes.filter((n) => n.type === "group");
+  for (const g of groups) {
+    const cx = (g.position?.x || 0) + 64;
+    const cy = (g.position?.y || 0) + 64;
+    const r = 74; // um pouco maior que 64 pra facilitar o acerto
+    const dx = x - cx, dy = y - cy;
+    if (dx * dx + dy * dy <= r * r) return g.id;
+  }
+  return null;
+}, [nodes]);
+
+const onNodeDrag = useCallback((evt, node) => {
+  if (!node || node.type === "group") { setDragOverGroupId(null); return; }
+  const c = getNodeCenter(node);
+  const gid = getGroupAtPoint(c.x, c.y);
+  setDragOverGroupId(gid);
+}, [getNodeCenter, getGroupAtPoint]);
+
+const onNodeDragStop = useCallback((evt, node) => {
+  if (!node || node.type === "group") { setDragOverGroupId(null); return; }
+  const c = getNodeCenter(node);
+  const gid = getGroupAtPoint(c.x, c.y);
+  if (gid) {
+    setNodes((nds) => nds.map((n) => n.id === node.id ? { ...n, data: { ...n.data, groupId: gid } } : n));
+  }
+  setDragOverGroupId(null);
+}, [getNodeCenter, getGroupAtPoint]);
 
 
   // Buscar e focar no primeiro resultado quando o usuário apertar Enter na busca
@@ -464,13 +531,13 @@ const selectedNode = useMemo(
 
         const nextDim = term ? !matches : false;
         const prev = n.data || {};
-        const extra = n.type === "group" ? { childCount: childCount.get(n.id) || 0 } : {};
+        const extra = n.type === "group" ? { childCount: childCount.get(n.id) || 0, __hover: n.id === dragOverGroupId } : {};
 
         if (prev.__theme === theme && !!prev.__dim === !!nextDim && prev.childCount === extra.childCount) return n;
 
         return { ...n, data: { ...prev, ...extra, __theme: theme, __dim: nextDim } };
       });
-  }, [nodes, theme, filter]);
+  }, [nodes, theme, filter, dragOverGroupId]);
 
   const mappedEdges = useMemo(() => {
     const collapsed = new Set(nodes.filter((n) => n.type === "group" && n.data?.collapsed).map((n) => n.id));
@@ -672,7 +739,7 @@ return (
             {t("autoLayout")}
           </button>
           <button onClick={validate} className="px-3 py-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700">
-            {t("Validate")}
+            {t("validate")}
           </button>
           <button onClick={fit} className="px-3 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-900">
             {t("fit")}
@@ -773,6 +840,8 @@ return (
         {page === "tree" ? (
           <>
             <ReactFlow
+              onNodeDrag={onNodeDrag}
+              onNodeDragStop={onNodeDragStop}
               isValidConnection={isValidConnection}
               onlyRenderVisibleElements
               zoomOnScroll
@@ -1151,6 +1220,25 @@ return (
                       </select>
                     </label>
                   </div>
+
+<div className="grid grid-cols-1 gap-2">
+  <label className="text-sm">
+    Grupo
+    <select
+      className={cx(
+        "mt-1 w-full border rounded-md px-2 py-1.5",
+        isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300"
+      )}
+      value={selectedNode.data.groupId || ""}
+      onChange={(e) => patchSelected({ groupId: e.target.value || undefined })}
+    >
+      <option value="">— Sem grupo —</option>
+      {nodes.filter((n) => n.type === "group").map((g) => (
+        <option key={g.id} value={g.id}>{g.data?.name || g.id}</option>
+      ))}
+    </select>
+  </label>
+</div>
 
                   <label className="text-sm">
                     {t("tags")}
