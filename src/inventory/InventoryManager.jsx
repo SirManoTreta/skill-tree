@@ -50,6 +50,10 @@ function InventoryManager({ isDark, onExportToTree }) {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [ammoMenuOpenId]);
 
+  const onDragStartItem = (e, id) => {
+    try { e.dataTransfer.setData("text/hability-item", id); } catch {}
+  };
+
 
   // Formulário de novo/edição (dobrável)
   const emptyForm = useMemo(() => ({
@@ -614,6 +618,16 @@ const filtered = useMemo(() => {
 
               <label className="text-sm">
                 {t("tagsComma")}
+                <label className="text-sm">
+                  Imagem (URL ou data URI)
+                  <input
+                    className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                    value={form.imageUrl || ""}
+                    onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
+                    placeholder="https://... ou data:image/png;base64,..."
+                  />
+                </label>
                 <input
                   className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                     isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
@@ -1056,7 +1070,15 @@ const filtered = useMemo(() => {
                 />
               </div>
 
-              <div className="flex items-center gap-2">
+              <div
+                className="flex items-center gap-2"
+                draggable
+                onDragStart={(e) => onDragStartItem(e, x.id)}
+                title="Arraste para equipar"
+              >
+                {x.imageUrl ? (
+                  <img src={x.imageUrl} alt="" className="w-6 h-6 object-cover rounded" />
+                ) : null}
                 <div className={cx("text-sm font-medium truncate", x.equipped ? "text-emerald-600" : "")}>
                   {x.name}
                 </div>

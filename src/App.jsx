@@ -1,6 +1,7 @@
 import SkillNode from "./components/SkillNode";
 import GroupNode from "./components/GroupNode";
 import InventoryManager from "./inventory/InventoryManager";
+import EquipmentPage from "./inventory/EquipmentPage";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY } from "./constants/storage";
 import { NODE_TYPES, CLASSES_5E, ACTION_TYPES, USES_TYPES } from "./constants/dnd";
@@ -661,6 +662,20 @@ return (
           >
             📦 {t("inventory")}
           </button>
+
+          <button
+           onClick={() => setPage("equipment")}
+           className={cx(
+             "px-3 py-1.5 rounded-lg border shadow",
+             page === "equipment"
+               ? "bg-indigo-600 text-white border-indigo-600"
+               : isDark
+                 ? "bg-zinc-900/90 border-zinc-700 hover:bg-zinc-800"
+                 : "bg-white/90 border-slate-200 hover:bg-slate-50"
+           )}
+         >
+           🛡️ {t("equipment")}
+         </button>
         </div>
 
         {/* Botões contextuais da Árvore */}
@@ -1386,6 +1401,8 @@ return (
           </>
         ) : page === "inventory" ? (
           <InventoryManager isDark={isDark} onExportToTree={addItemsToTree} />
+        ) : page === "equipment" ?(
+          <EquipmentPage isDark={isDark} />
         ) : (
           <CharacterSheet isDark={isDark} />
         )}

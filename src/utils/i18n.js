@@ -4,6 +4,8 @@ import { LANGUAGE_KEY } from "../constants/storage";
 const dict = {
   pt: {
     // PT-BR
+    inventory: "Inventário",
+    equipment: "Equipamento",
     exportAll: "Exportar Tudo",
     classTitle: "Classe",
     originsTitle: "Origens",
@@ -194,6 +196,8 @@ const dict = {
   },
   en: {
     // EN
+    inventory: "Inventory",
+    equipment: "Equipment",
     classTitle: "Class",
     originsTitle: "Origins",
     species: "Species",
