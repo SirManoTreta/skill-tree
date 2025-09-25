@@ -450,6 +450,15 @@ const editItem = (it) => {
     }
   };
 
+  const fileToDataURL = (file) =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+
+
 const filtered = useMemo(() => {
     const tSearch = (filterText || "").toLowerCase();
     let out = items.filter((x) => {
@@ -628,6 +637,29 @@ const filtered = useMemo(() => {
                     placeholder="https://... ou data:image/png;base64,..."
                   />
                 </label>
+
+                <label className="text-sm">Imagem (URL ou data URI)</label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      className="mt-1 w-full border rounded-md px-2 py-1.5"
+                      value={form.imageUrl || ""}
+                      onChange={(e) => setForm(f => ({ ...f, imageUrl: e.target.value }))} 
+                      placeholder="https://... ou data:image/png;base64,..."
+                    />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        const dataUrl = await fileToDataURL(f);   // gera o data URI
+                        setForm(prev => ({ ...prev, imageUrl: dataUrl }));
+                      }}
+                      title="Enviar arquivo e gerar data URI"
+                    />
+                  </div>
+
+
                 <input
                   className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
                     isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
