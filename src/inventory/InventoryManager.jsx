@@ -623,10 +623,18 @@ const filtered = useMemo(() => {
                 >
                   {ITEM_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
+                {t("tagsComma")}
+                <input
+                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                  value={Array.isArray(form.tags) ? formatTags(form.tags) : form.tags}
+                  onChange={(e) => setForm((f) => ({ ...f, tags: parseTags(e.target.value) }))}
+                  placeholder="mágico, prata, sagrado"
+                />
               </label>
 
               <label className="text-sm">
-                {t("tagsComma")}
+                
                 <label className="text-sm">
                   Imagem (URL ou data URI)
                   <input
@@ -637,8 +645,8 @@ const filtered = useMemo(() => {
                     placeholder="https://... ou data:image/png;base64,..."
                   />
                 </label>
-
-                <label className="text-sm">Imagem (URL ou data URI)</label>
+                
+                <label className="text-sm"><p>Adicionar Imagem do Item</p></label>
                   <div className="flex gap-2 items-center">
                     <input
                       className="mt-1 w-full border rounded-md px-2 py-1.5"
@@ -659,14 +667,7 @@ const filtered = useMemo(() => {
                     />
                   </div>
 
-
-                <input
-                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                  value={Array.isArray(form.tags) ? formatTags(form.tags) : form.tags}
-                  onChange={(e) => setForm((f) => ({ ...f, tags: parseTags(e.target.value) }))}
-                  placeholder="mágico, prata, sagrado"
-                />
+                
               </label>
             </div>
 
