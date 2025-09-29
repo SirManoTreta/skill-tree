@@ -56,16 +56,16 @@ function canDropInSlot(item, slotId) {
   const is = (cat) => (item.category || "") === cat;
 
   switch (slotId) {
-    case "weaponMain":    return is("weapon");
-    case "offhand":       return is("weapon") || (is("armor") && item.armorType === "shield");
-    case "armorChest":    return is("armor") && item.armorType !== "shield";
-    case "helmet":        return tagMatch(/helm|helmet|capacete/i);
-    case "gloves":        return tagMatch(/glove|gauntlet|luva/i);
-    case "boots":         return tagMatch(/boot|bota/i);
+    case "weaponMain":    return tagMatch(/weapon|arma/i);//is("weapon");
+    case "offhand":       return tagMatch(/shield|escudo|arma/i);//is("weapon") || (is("armor") && item.armorType === "shield");
+    case "armorChest":    return tagMatch(/armadura|armor|roupa/i);//is("armor") && item.armorType !== "shield";
+    case "helmet":        return tagMatch(/helm|helmet|capacete|chapéu|chapeu/i);
+    case "gloves":        return tagMatch(/glove|gauntlet|luva|manopla|braçadeira/i);
+    case "boots":         return tagMatch(/boot|bota|sapato/i);
     case "belt":          return tagMatch(/belt|cinto/i);
     case "amulet":        return tagMatch(/amulet|amuleto/i) || (is("misc") && tagMatch(/amulet|amuleto/i));
     case "ring1":
-    case "ring2":         return tagMatch(/ring|anel/i) || (is("misc") && tagMatch(/ring|anel/i));
+    case "ring2":         return tagMatch(/ring|anel|aliança/i) || (is("misc") && tagMatch(/ring|anel/i));
     default:              return false;
   }
 }

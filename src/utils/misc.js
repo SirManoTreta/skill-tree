@@ -27,5 +27,12 @@ export const download = async (filename, text, mime = "text/plain") => {
 export const uid = () => Math.random().toString(36).slice(2, 10);
 export const cx = (...c) => c.filter(Boolean).join(" ");
 export const getLabel = (list, value) => list.find((x) => x.value === value)?.label ?? value;
-export const parseTags = (s) => (s || "").split(/[;,]/).map((t) => t.trim()).filter(Boolean);
-export const formatTags = (arr) => (arr || []).join(", ");
+export const parseTags = (s) => Array.from(new Set(
+  String(s || "")
+    .split(/[,;|\s]+/)
+    .map(t => t.trim())
+    .filter(Boolean)
+));
+
+export const formatTags = (arr) =>
+  (Array.isArray(arr) ? arr : parseTags(arr)).join(", ");
