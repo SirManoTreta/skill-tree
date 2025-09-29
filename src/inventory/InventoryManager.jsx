@@ -639,80 +639,71 @@ const filtered = useMemo(() => {
 
                 <label className="text-sm">
   Tags
-  <div
-    className={cx(
-      "mt-1 w-full border rounded-md px-2 py-1.5 flex flex-wrap gap-2 items-center",
-      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300"
-    )}
-  >
-    {(Array.isArray(form.tags) ? form.tags : parseTags(form.tags)).map((tg, idx) => (
-      <span
-        key={`${tg}-${idx}`}
-        className={cx(
-          "inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full",
-          isDark ? "bg-zinc-800" : "bg-slate-100"
-        )}
-      >
-        {tg}
-        <button
-          type="button"
-          aria-label={`Remover ${tg}`}
-          className="leading-none"
-          onClick={() =>
-            setForm(f => {
-              const arr = Array.isArray(f.tags) ? f.tags : parseTags(f.tags);
-              return { ...f, tags: arr.filter((x, i) => !(i === idx && x === tg)) };
-            })
-          }
-        >
-          ×
-        </button>
-      </span>
-    ))}
+                <div
+                  className={cx(
+                    "mt-1 w-full border rounded-md px-2 py-1.5 flex flex-wrap gap-2 items-center",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300"
+                  )}
+                >
+                  {(Array.isArray(form.tags) ? form.tags : parseTags(form.tags)).map((tg, idx) => (
+                    <span
+                      key={`${tg}-${idx}`}
+                      className={cx(
+                        "inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full",
+                        isDark ? "bg-zinc-800" : "bg-slate-100"
+                      )}
+                    >
+                      {tg}
+                      <button
+                        type="button"
+                        aria-label={`Remover ${tg}`}
+                        className="leading-none"
+                        onClick={() =>
+                          setForm(f => {
+                            const arr = Array.isArray(f.tags) ? f.tags : parseTags(f.tags);
+                            return { ...f, tags: arr.filter((x, i) => !(i === idx && x === tg)) };
+                          })
+                        }
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
 
-    <input
-      className={cx(
-        "flex-1 min-w-[8ch] outline-none",
-        isDark ? "bg-zinc-900 text-zinc-100" : "bg-white text-slate-900"
-      )}
-      value={tagDraft}
-      onChange={(e) => setTagDraft(e.target.value)}
-      onKeyDown={(e) => {
-        const k = e.key;
-        const isSep = k === "," || k === ";" || k === " " || k === "Enter" || k === "Tab";
-        if (isSep) {
-          e.preventDefault();         // não escreve o caractere; vira “confirmação”
-          commitDraftToTags();
-        } else if (k === "Backspace" && tagDraft === "") {
-          // Apaga a última tag quando o draft está vazio (UX padrão de tag inputs)
-          setForm(f => {
-            const arr = Array.isArray(f.tags) ? f.tags : parseTags(f.tags);
-            if (!arr.length) return f;
-            return { ...f, tags: arr.slice(0, -1) };
-          });
-        }
-      }}
-      onBlur={() => commitDraftToTags()}
-      onPaste={(e) => {
-        const text = e.clipboardData.getData("text");
-        if (/[,\s;]/.test(text)) {
-          e.preventDefault();
-          commitDraftToTags(text);
-        }
-      }}
-      placeholder="Digite e use , ; ou espaço"
-    />
-  </div>
-</label>
-=======
-                <input
-                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                  value={Array.isArray(form.tags) ? formatTags(form.tags) : form.tags}
-                  onChange={(e) => setForm((f) => ({ ...f, tags: parseTags(e.target.value) }))}
-                  placeholder="mágico, prata, sagrado"
-                />
-
+                  <input
+                    className={cx(
+                      "flex-1 min-w-[8ch] outline-none",
+                      isDark ? "bg-zinc-900 text-zinc-100" : "bg-white text-slate-900"
+                    )}
+                    value={tagDraft}
+                    onChange={(e) => setTagDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      const k = e.key;
+                      const isSep = k === "," || k === ";" || k === " " || k === "Enter" || k === "Tab";
+                      if (isSep) {
+                        e.preventDefault();         // não escreve o caractere; vira “confirmação”
+                        commitDraftToTags();
+                      } else if (k === "Backspace" && tagDraft === "") {
+                        // Apaga a última tag quando o draft está vazio (UX padrão de tag inputs)
+                        setForm(f => {
+                          const arr = Array.isArray(f.tags) ? f.tags : parseTags(f.tags);
+                          if (!arr.length) return f;
+                          return { ...f, tags: arr.slice(0, -1) };
+                        });
+                      }
+                    }}
+                    onBlur={() => commitDraftToTags()}
+                    onPaste={(e) => {
+                      const text = e.clipboardData.getData("text");
+                      if (/[,\s;]/.test(text)) {
+                        e.preventDefault();
+                        commitDraftToTags(text);
+                      }
+                    }}
+                    placeholder="Digite e use , ; ou espaço"
+                  />
+                </div>
+              </label>
               </label>
 
               <label className="text-sm">
