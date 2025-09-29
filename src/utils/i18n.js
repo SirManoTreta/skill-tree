@@ -36,7 +36,7 @@ const dict = {
     profNote: "Quando marcado, soma o Bônus de Proficiência além do modificador do atributo.",
     abilitiesTitle: "Atributos",
     abilitiesShort: { STR: "FOR", DEX: "DES", CON: "CON", INT: "INT", WIS: "SAB", CHA: "CAR" },
-    abilitiesFull:  { STR: "Força", DEX: "Destreza", CON: "Constituição", INT: "Inteligência", WIS: "Sabedoria", CHA: "Carisma" },
+    abilitiesFull: { STR: "Força", DEX: "Destreza", CON: "Constituição", INT: "Inteligência", WIS: "Sabedoria", CHA: "Carisma" },
     skills: {
       acrobatics: "Acrobacia",
       animalHandling: "Adestrar Animais",
@@ -234,7 +234,7 @@ const dict = {
     profNote: "When checked, adds Proficiency Bonus on top of the ability modifier.",
     abilitiesTitle: "Abilities",
     abilitiesShort: { STR: "STR", DEX: "DEX", CON: "CON", INT: "INT", WIS: "WIS", CHA: "CHA" },
-    abilitiesFull:  { STR: "Strength", DEX: "Dexterity", CON: "Constitution", INT: "Intelligence", WIS: "Wisdom", CHA: "Charisma" },
+    abilitiesFull: { STR: "Strength", DEX: "Dexterity", CON: "Constitution", INT: "Intelligence", WIS: "Wisdom", CHA: "Charisma" },
     skills: {
       acrobatics: "Acrobatics",
       animalHandling: "Animal Handling",
@@ -394,9 +394,9 @@ export function getLang() {
 }
 
 export function setLang(lang) {
-  try { localStorage.setItem(LANGUAGE_KEY, lang); } catch {}
+  try { localStorage.setItem(LANGUAGE_KEY, lang); } catch { }
   // suggestion: force a soft reload so all components pick new literals without context
-  try { location.reload(); } catch {}
+  try { location.reload(); } catch { }
 }
 
 export function t(key, params) {

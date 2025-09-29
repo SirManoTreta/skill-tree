@@ -8,20 +8,20 @@ export const download = async (filename, text, mime = "text/plain") => {
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {
-      try { URL.revokeObjectURL(href); } catch {}
-      try { document.body.removeChild(a); } catch {}
+      try { URL.revokeObjectURL(href); } catch { }
+      try { document.body.removeChild(a); } catch { }
     }, 0);
-  } catch {}
+  } catch { }
   try {
     const dataUrl = `data:${mime};charset=utf-8,${encodeURIComponent(text)}`;
     window.open(dataUrl, "_blank");
-  } catch {}
+  } catch { }
   try {
     if (navigator?.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
       alert("Conteúdo exportado. Se o download não iniciou, o texto foi copiado para a área de transferência.");
     }
-  } catch {}
+  } catch { }
 };
 
 export const uid = () => Math.random().toString(36).slice(2, 10);

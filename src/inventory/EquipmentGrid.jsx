@@ -56,17 +56,17 @@ function canDropInSlot(item, slotId) {
   const is = (cat) => (item.category || "") === cat;
 
   switch (slotId) {
-    case "weaponMain":    return tagMatch(/weapon|arma/i);//is("weapon");
-    case "offhand":       return tagMatch(/shield|escudo|arma/i);//is("weapon") || (is("armor") && item.armorType === "shield");
-    case "armorChest":    return tagMatch(/armadura|armor|roupa/i);//is("armor") && item.armorType !== "shield";
-    case "helmet":        return tagMatch(/helm|helmet|capacete|chapéu|chapeu/i);
-    case "gloves":        return tagMatch(/glove|gauntlet|luva|manopla|braçadeira/i);
-    case "boots":         return tagMatch(/boot|bota|sapato/i);
-    case "belt":          return tagMatch(/belt|cinto/i);
-    case "amulet":        return tagMatch(/amulet|amuleto/i) || (is("misc") && tagMatch(/amulet|amuleto/i));
+    case "weaponMain": return tagMatch(/weapon|arma/i);//is("weapon");
+    case "offhand": return tagMatch(/shield|escudo|arma/i);//is("weapon") || (is("armor") && item.armorType === "shield");
+    case "armorChest": return tagMatch(/armadura|armor|roupa/i);//is("armor") && item.armorType !== "shield";
+    case "helmet": return tagMatch(/helm|helmet|capacete|chapéu|chapeu/i);
+    case "gloves": return tagMatch(/glove|gauntlet|luva|manopla|braçadeira/i);
+    case "boots": return tagMatch(/boot|bota|sapato/i);
+    case "belt": return tagMatch(/belt|cinto/i);
+    case "amulet": return tagMatch(/amulet|amuleto/i) || (is("misc") && tagMatch(/amulet|amuleto/i));
     case "ring1":
-    case "ring2":         return tagMatch(/ring|anel|aliança/i) || (is("misc") && tagMatch(/ring|anel/i));
-    default:              return false;
+    case "ring2": return tagMatch(/ring|anel|aliança/i) || (is("misc") && tagMatch(/ring|anel/i));
+    default: return false;
   }
 }
 
@@ -74,12 +74,12 @@ function canDropInSlot(item, slotId) {
 function placeholderFor(slotId) {
   switch (slotId) {
     case "weaponMain": return "weapon";
-    case "offhand":    return "shield";
+    case "offhand": return "shield";
     case "armorChest": return "armor";
     case "ring1":
-    case "ring2":      return "ring";
-    case "amulet":     return "amulet";
-    default:           return "misc";
+    case "ring2": return "ring";
+    case "amulet": return "amulet";
+    default: return "misc";
   }
 }
 
@@ -87,7 +87,7 @@ function placeholderFor(slotId) {
 function placeholderForItem(it) {
   if (!it) return "misc";
   if (it.category === "weapon") return "weapon";
-  if (it.category === "armor")  return it.armorType === "shield" ? "shield" : "armor";
+  if (it.category === "armor") return it.armorType === "shield" ? "shield" : "armor";
   // tags ajudam a distinguir anel/amuleta em 'misc'
   const has = (rx) => Array.isArray(it.tags) && it.tags.some(t => rx.test(String(t)));
   if (has(/ring|anel/i)) return "ring";
@@ -158,18 +158,18 @@ export default function EquipmentGrid({ items, setItems, isDark }) {
 
   const slots = [
     // linha 1
-    { id: "helmet",     label: "Cabeça" },
-    { id: "amulet",     label: "Amuleto" },
-    { id: "ring1",      label: "Anel 1" },
-    { id: "ring2",      label: "Anel 2" },
+    { id: "helmet", label: "Cabeça" },
+    { id: "amulet", label: "Amuleto" },
+    { id: "ring1", label: "Anel 1" },
+    { id: "ring2", label: "Anel 2" },
     // linha 2
     { id: "weaponMain", label: "Arma" },
     { id: "armorChest", label: "Peitoral" },
-    { id: "offhand",    label: "Mão Sec." },
-    { id: "belt",       label: "Cinto" },
+    { id: "offhand", label: "Mão Sec." },
+    { id: "belt", label: "Cinto" },
     // linha 3
-    { id: "gloves",     label: "Luvas" },
-    { id: "boots",      label: "Botas" },
+    { id: "gloves", label: "Luvas" },
+    { id: "boots", label: "Botas" },
   ];
 
   const wrap = cx(

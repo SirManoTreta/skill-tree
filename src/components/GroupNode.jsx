@@ -57,14 +57,14 @@ export default function GroupNode({ data, selected }) {
       </div>
 
       {/* handles: entradas (target) e saídas (source) nas 4 direções */}
-      <Handle type="target" position={Position.Left}   id="in-left"   className="!bg-indigo-500" style={{ width: 12, height: 12 }} />
-      <Handle type="target" position={Position.Right}  id="in-right"  className="!bg-indigo-500" style={{ width: 12, height: 12 }} />
-      <Handle type="target" position={Position.Top}    id="in-top"    className="!bg-indigo-500" style={{ width: 12, height: 12 }} />
+      <Handle type="target" position={Position.Left} id="in-left" className="!bg-indigo-500" style={{ width: 12, height: 12 }} />
+      <Handle type="target" position={Position.Right} id="in-right" className="!bg-indigo-500" style={{ width: 12, height: 12 }} />
+      <Handle type="target" position={Position.Top} id="in-top" className="!bg-indigo-500" style={{ width: 12, height: 12 }} />
       <Handle type="target" position={Position.Bottom} id="in-bottom" className="!bg-indigo-500" style={{ width: 12, height: 12 }} />
 
-      <Handle type="source" position={Position.Left}   id="out-left"   className="!bg-indigo-500" style={{ width: 12, height: 12 }} />
-      <Handle type="source" position={Position.Right}  id="out-right"  className="!bg-indigo-500" style={{ width: 12, height: 12 }} />
-      <Handle type="source" position={Position.Top}    id="out-top"    className="!bg-indigo-500" style={{ width: 12, height: 12 }} />
+      <Handle type="source" position={Position.Left} id="out-left" className="!bg-indigo-500" style={{ width: 12, height: 12 }} />
+      <Handle type="source" position={Position.Right} id="out-right" className="!bg-indigo-500" style={{ width: 12, height: 12 }} />
+      <Handle type="source" position={Position.Top} id="out-top" className="!bg-indigo-500" style={{ width: 12, height: 12 }} />
       <Handle type="source" position={Position.Bottom} id="out-bottom" className="!bg-indigo-500" style={{ width: 12, height: 12 }} />
     </div>
   );

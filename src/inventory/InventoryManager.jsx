@@ -63,7 +63,7 @@ function InventoryManager({ isDark, onExportToTree }) {
   }, [ammoMenuOpenId]);
 
   const onDragStartItem = (e, id) => {
-    try { e.dataTransfer.setData("text/hability-item", id); } catch {}
+    try { e.dataTransfer.setData("text/hability-item", id); } catch { }
   };
 
 
@@ -104,14 +104,14 @@ function InventoryManager({ isDark, onExportToTree }) {
   const [showEditor, setShowEditor] = useState(false);
 
   useEffect(() => {
-    try { localStorage.setItem(INVENTORY_KEY, JSON.stringify(items)); } catch {}
+    try { localStorage.setItem(INVENTORY_KEY, JSON.stringify(items)); } catch { }
   }, [items]);
 
   const openNew = () => { setForm(emptyForm); setShowEditor(true); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const cancelEdit = () => { setForm(emptyForm); setShowEditor(false); };
 
-  
-const onSubmit = (e) => {
+
+  const onSubmit = (e) => {
     e?.preventDefault?.();
     const id = form.id || uid();
 
@@ -161,13 +161,13 @@ const onSubmit = (e) => {
   };
 
 
-const editItem = (it) => {
+  const editItem = (it) => {
     // Prepare ammo for editor: prefer slots; if legacy fields present, convert to one slot.
     let ammoBlock = it.ammo && Array.isArray(it.ammo.slots)
       ? it.ammo
       : (Number(it.ammoMax || 0) > 0
-          ? { active: 0, slots: [{ type: "Comum", current: Number(it.ammoCurrent || 0), max: Number(it.ammoMax || 0), note: "" }] }
-          : { active: 0, slots: [] });
+        ? { active: 0, slots: [{ type: "Comum", current: Number(it.ammoCurrent || 0), max: Number(it.ammoMax || 0), note: "" }] }
+        : { active: 0, slots: [] });
     setForm({
       ...emptyForm,
       ...it,
@@ -217,7 +217,7 @@ const editItem = (it) => {
         if (x.id !== id) return x;
         const ammo = ensureAmmo(x);
         if (!ammo) return x;
-        const nextAmmo = updater({ ...ammo, slots: ammo.slots.map(s => ({...s})) });
+        const nextAmmo = updater({ ...ammo, slots: ammo.slots.map(s => ({ ...s })) });
         // keep legacy fields in sync with active slot for backward compatibility
         const act = nextAmmo.slots[nextAmmo.active] || { current: 0, max: 0 };
         return { ...x, ammo: nextAmmo, ammoCurrent: act.current, ammoMax: act.max };
@@ -239,9 +239,11 @@ const editItem = (it) => {
           // legacy: just clamp fields if exist
           return { ...x, ammoCurrent: Math.max(0, Math.min((x.ammoMax || 0), (x.ammoCurrent || 0) + delta)) };
         }
-        const next = { ...ammo, slots: ammo.slots.map((s, i) => i === ammo.active
-          ? { ...s, current: Math.max(0, Math.min(s.max || 0, (Number(s.current || 0) + delta))) }
-          : s) };
+        const next = {
+          ...ammo, slots: ammo.slots.map((s, i) => i === ammo.active
+            ? { ...s, current: Math.max(0, Math.min(s.max || 0, (Number(s.current || 0) + delta))) }
+            : s)
+        };
         const act = next.slots[next.active] || { current: 0, max: 0 };
         return { ...x, ammo: next, ammoCurrent: act.current, ammoMax: act.max };
       })
@@ -354,9 +356,9 @@ const editItem = (it) => {
     reader.readAsText(file);
   };
 
-  
 
-  
+
+
   const exportToTree = () => {
     // If App provided a callback, use it for live merge without refresh
     if (typeof onExportToTree === "function") {
@@ -372,7 +374,7 @@ const editItem = (it) => {
       try {
         const raw = localStorage.getItem(STORAGE_KEYS[0]);
         if (raw) tree = JSON.parse(raw);
-      } catch {}
+      } catch { }
       let nodes = Array.isArray(tree?.nodes) ? [...tree.nodes] : [];
       let edges = Array.isArray(tree?.edges) ? [...tree.edges] : [];
 
@@ -453,7 +455,7 @@ const editItem = (it) => {
       const merged = { nodes: [...nodes, ...newNodes], edges };
       try {
         localStorage.setItem(STORAGE_KEYS[0], JSON.stringify(merged));
-      } catch {}
+      } catch { }
 
       alert(`Enviado para a Árvore: ${newNodes.length} nós adicionados.`);
     } catch (e) {
@@ -463,15 +465,15 @@ const editItem = (it) => {
   };
 
   const fileToDataURL = (file) =>
-  new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
+    new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
 
 
-const filtered = useMemo(() => {
+  const filtered = useMemo(() => {
     const tSearch = (filterText || "").toLowerCase();
     let out = items.filter((x) => {
       const byCat = filterCat === "all" || x.category === filterCat;
@@ -638,76 +640,76 @@ const filtered = useMemo(() => {
                 {t("tagsComma")}
 
                 <label className="text-sm">
-  Tags
-                <div
-                  className={cx(
-                    "mt-1 w-full border rounded-md px-2 py-1.5 flex flex-wrap gap-2 items-center",
-                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300"
-                  )}
-                >
-                  {(Array.isArray(form.tags) ? form.tags : parseTags(form.tags)).map((tg, idx) => (
-                    <span
-                      key={`${tg}-${idx}`}
+                  Tags
+                  <div
+                    className={cx(
+                      "mt-1 w-full border rounded-md px-2 py-1.5 flex flex-wrap gap-2 items-center",
+                      isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300"
+                    )}
+                  >
+                    {(Array.isArray(form.tags) ? form.tags : parseTags(form.tags)).map((tg, idx) => (
+                      <span
+                        key={`${tg}-${idx}`}
+                        className={cx(
+                          "inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full",
+                          isDark ? "bg-zinc-800" : "bg-slate-100"
+                        )}
+                      >
+                        {tg}
+                        <button
+                          type="button"
+                          aria-label={`Remover ${tg}`}
+                          className="leading-none"
+                          onClick={() =>
+                            setForm(f => {
+                              const arr = Array.isArray(f.tags) ? f.tags : parseTags(f.tags);
+                              return { ...f, tags: arr.filter((x, i) => !(i === idx && x === tg)) };
+                            })
+                          }
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+
+                    <input
                       className={cx(
-                        "inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full",
-                        isDark ? "bg-zinc-800" : "bg-slate-100"
+                        "flex-1 min-w-[8ch] outline-none",
+                        isDark ? "bg-zinc-900 text-zinc-100" : "bg-white text-slate-900"
                       )}
-                    >
-                      {tg}
-                      <button
-                        type="button"
-                        aria-label={`Remover ${tg}`}
-                        className="leading-none"
-                        onClick={() =>
+                      value={tagDraft}
+                      onChange={(e) => setTagDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        const k = e.key;
+                        const isSep = k === "," || k === ";" || k === " " || k === "Enter" || k === "Tab";
+                        if (isSep) {
+                          e.preventDefault();         // não escreve o caractere; vira “confirmação”
+                          commitDraftToTags();
+                        } else if (k === "Backspace" && tagDraft === "") {
+                          // Apaga a última tag quando o draft está vazio (UX padrão de tag inputs)
                           setForm(f => {
                             const arr = Array.isArray(f.tags) ? f.tags : parseTags(f.tags);
-                            return { ...f, tags: arr.filter((x, i) => !(i === idx && x === tg)) };
-                          })
+                            if (!arr.length) return f;
+                            return { ...f, tags: arr.slice(0, -1) };
+                          });
                         }
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-
-                  <input
-                    className={cx(
-                      "flex-1 min-w-[8ch] outline-none",
-                      isDark ? "bg-zinc-900 text-zinc-100" : "bg-white text-slate-900"
-                    )}
-                    value={tagDraft}
-                    onChange={(e) => setTagDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      const k = e.key;
-                      const isSep = k === "," || k === ";" || k === " " || k === "Enter" || k === "Tab";
-                      if (isSep) {
-                        e.preventDefault();         // não escreve o caractere; vira “confirmação”
-                        commitDraftToTags();
-                      } else if (k === "Backspace" && tagDraft === "") {
-                        // Apaga a última tag quando o draft está vazio (UX padrão de tag inputs)
-                        setForm(f => {
-                          const arr = Array.isArray(f.tags) ? f.tags : parseTags(f.tags);
-                          if (!arr.length) return f;
-                          return { ...f, tags: arr.slice(0, -1) };
-                        });
-                      }
-                    }}
-                    onBlur={() => commitDraftToTags()}
-                    onPaste={(e) => {
-                      const text = e.clipboardData.getData("text");
-                      if (/[,\s;]/.test(text)) {
-                        e.preventDefault();
-                        commitDraftToTags(text);
-                      }
-                    }}
-                    placeholder="Digite e use , ; ou espaço"
-                  />
-                </div>
-              </label>
+                      }}
+                      onBlur={() => commitDraftToTags()}
+                      onPaste={(e) => {
+                        const text = e.clipboardData.getData("text");
+                        if (/[,\s;]/.test(text)) {
+                          e.preventDefault();
+                          commitDraftToTags(text);
+                        }
+                      }}
+                      placeholder="Digite e use , ; ou espaço"
+                    />
+                  </div>
+                </label>
               </label>
 
               <label className="text-sm">
-                
+
                 <label className="text-sm">
                   Imagem (URL ou data URI)
                   <input
@@ -718,29 +720,29 @@ const filtered = useMemo(() => {
                     placeholder="https://... ou data:image/png;base64,..."
                   />
                 </label>
-                
-                <label className="text-sm"><p>Adicionar Imagem do Item</p></label>
-                  <div className="flex gap-2 items-center">
-                    <input
-                      className="mt-1 w-full border rounded-md px-2 py-1.5"
-                      value={form.imageUrl || ""}
-                      onChange={(e) => setForm(f => ({ ...f, imageUrl: e.target.value }))} 
-                      placeholder="https://... ou data:image/png;base64,..."
-                    />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const f = e.target.files?.[0];
-                        if (!f) return;
-                        const dataUrl = await fileToDataURL(f);   // gera o data URI
-                        setForm(prev => ({ ...prev, imageUrl: dataUrl }));
-                      }}
-                      title="Enviar arquivo e gerar data URI"
-                    />
-                  </div>
 
-                
+                <label className="text-sm"><p>Adicionar Imagem do Item</p></label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    className="mt-1 w-full border rounded-md px-2 py-1.5"
+                    value={form.imageUrl || ""}
+                    onChange={(e) => setForm(f => ({ ...f, imageUrl: e.target.value }))}
+                    placeholder="https://... ou data:image/png;base64,..."
+                  />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      const dataUrl = await fileToDataURL(f);   // gera o data URI
+                      setForm(prev => ({ ...prev, imageUrl: dataUrl }));
+                    }}
+                    title="Enviar arquivo e gerar data URI"
+                  />
+                </div>
+
+
               </label>
             </div>
 
@@ -788,11 +790,11 @@ const filtered = useMemo(() => {
 
               <div className="flex gap-2 items-end">
                 <label className="text-sm flex items-center gap-2">
-                  <input type="checkbox" checked={form.equipped} onChange={() => setForm((f) => ({ ...f, equipped: !f.equipped }))}/>
+                  <input type="checkbox" checked={form.equipped} onChange={() => setForm((f) => ({ ...f, equipped: !f.equipped }))} />
                   {t("equipped")}
                 </label>
                 <label className="text-sm flex items-center gap-2">
-                  <input type="checkbox" checked={form.attuned} onChange={() => setForm((f) => ({ ...f, attuned: !f.attuned }))}/>
+                  <input type="checkbox" checked={form.attuned} onChange={() => setForm((f) => ({ ...f, attuned: !f.attuned }))} />
                   {t("attuned")}
                 </label>
               </div>
@@ -833,172 +835,172 @@ const filtered = useMemo(() => {
                   />
                 </label>
                 <label className="text-sm flex items-center gap-2">
-                  <input type="checkbox" checked={form.stealthDisadv} onChange={() => setForm((f) => ({ ...f, stealthDisadv: !f.stealthDisadv }))}/>
+                  <input type="checkbox" checked={form.stealthDisadv} onChange={() => setForm((f) => ({ ...f, stealthDisadv: !f.stealthDisadv }))} />
                   {t("stealthDisadv")}
                 </label>
               </div>
             )}
 
-            
-{form.category === "weapon" && (
-  <>
-    <div className={cx("rounded-lg p-3 grid md:grid-cols-4 gap-3",
-      isDark ? "border border-zinc-800" : "border border-slate-200")}>
-      <label className="text-sm md:col-span-2">
-        {t("damage")}
-        <input
-          className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-            isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-          value={form.damage}
-          onChange={(e) => setForm((f) => ({ ...f, damage: e.target.value }))}
-          placeholder="ex.: 1d8 piercing"
-        />
-      </label>
-      <label className="text-sm md:col-span-2">
-        {t("range")}
-        <input
-          className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-            isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-          value={form.range}
-          onChange={(e) => setForm((f) => ({ ...f, range: e.target.value }))}
-          placeholder="ex.: 150/600 ft"
-        />
-      </label>
-      <label className="text-sm">
-        {t("ammoCurrent")}
-        <input
-          type="number" min={0}
-          className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-            isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-          value={form.ammoCurrent}
-          onChange={(e) => setForm((f) => ({ ...f, ammoCurrent: Number(e.target.value) }))}
-        />
-      </label>
-      <label className="text-sm">
-        {t("ammoMax")}
-        <input
-          type="number" min={0}
-          className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-            isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-          value={form.ammoMax}
-          onChange={(e) => setForm((f) => ({ ...f, ammoMax: Number(e.target.value) }))}
-        />
-      </label>
-    </div>
 
-    {/* Ammo Slots Editor */}
-    <div className={cx("rounded-lg p-3 grid gap-3",
-      isDark ? "border border-zinc-800" : "border border-slate-200")}>
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-medium">{t("ammoSlots")}</div>
-        <button
-          type="button"
-          className={cx("px-2 py-1 text-xs rounded-md border",
-            isDark ? "bg-zinc-900 border-zinc-700 hover:bg-zinc-800" : "bg-white border-slate-300 hover:bg-slate-50")}
-          onClick={() => setForm((f) => {
-            const next = { ...(f.ammo || { active: 0, slots: [] }) };
-            next.slots = [...(next.slots || []), { type: "Comum", current: 0, max: 0, note: "" }];
-            if (typeof next.active !== "number") next.active = 0;
-            return { ...f, ammo: next };
-          })}
-        >
-          {t("addSlot")}
-        </button>
-      </div>
+            {form.category === "weapon" && (
+              <>
+                <div className={cx("rounded-lg p-3 grid md:grid-cols-4 gap-3",
+                  isDark ? "border border-zinc-800" : "border border-slate-200")}>
+                  <label className="text-sm md:col-span-2">
+                    {t("damage")}
+                    <input
+                      className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                        isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                      value={form.damage}
+                      onChange={(e) => setForm((f) => ({ ...f, damage: e.target.value }))}
+                      placeholder="ex.: 1d8 piercing"
+                    />
+                  </label>
+                  <label className="text-sm md:col-span-2">
+                    {t("range")}
+                    <input
+                      className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                        isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                      value={form.range}
+                      onChange={(e) => setForm((f) => ({ ...f, range: e.target.value }))}
+                      placeholder="ex.: 150/600 ft"
+                    />
+                  </label>
+                  <label className="text-sm">
+                    {t("ammoCurrent")}
+                    <input
+                      type="number" min={0}
+                      className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                        isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                      value={form.ammoCurrent}
+                      onChange={(e) => setForm((f) => ({ ...f, ammoCurrent: Number(e.target.value) }))}
+                    />
+                  </label>
+                  <label className="text-sm">
+                    {t("ammoMax")}
+                    <input
+                      type="number" min={0}
+                      className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                        isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                      value={form.ammoMax}
+                      onChange={(e) => setForm((f) => ({ ...f, ammoMax: Number(e.target.value) }))}
+                    />
+                  </label>
+                </div>
 
-      {Array.isArray(form?.ammo?.slots) && form.ammo.slots.length > 0 ? (
-        <div className="grid gap-2">
-          {form.ammo.slots.map((s, i) => (
-            <div key={i} className="grid md:grid-cols-12 gap-2 items-end">
-              <label className="text-[12px] md:col-span-1 flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="activeAmmoEditor"
-                  checked={Number(form?.ammo?.active || 0) === i}
-                  onChange={() => setForm((f) => ({ ...f, ammo: { ...(f.ammo || { active: 0, slots: [] }), active: i } }))}
-                />
-                <span className="opacity-70">{t("active")}</span>
-              </label>
-              <label className="text-sm md:col-span-3">
-                {t("type")}
-                <input
-                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                  value={s.type || ""}
-                  onChange={(e) => setForm((f) => {
-                    const next = { ...(f.ammo || { active: 0, slots: [] }) };
-                    next.slots = next.slots.map((ss, idx) => idx === i ? { ...ss, type: e.target.value } : ss);
-                    return { ...f, ammo: next };
-                  })}
-                />
-              </label>
-              <label className="text-sm md:col-span-2">
-                {t("current")}
-                <input
-                  type="number" min={0}
-                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                  value={Number(s.current || 0)}
-                  onChange={(e) => setForm((f) => {
-                    const next = { ...(f.ammo || { active: 0, slots: [] }) };
-                    next.slots = next.slots.map((ss, idx) => idx === i ? { ...ss, current: Math.max(0, Number(e.target.value || 0)) } : ss);
-                    return { ...f, ammo: next };
-                  })}
-                />
-              </label>
-              <label className="text-sm md:col-span-2">
-                {t("max")}
-                <input
-                  type="number" min={0}
-                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
-                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-                  value={Number(s.max || 0)}
-                  onChange={(e) => setForm((f) => {
-                    const next = { ...(f.ammo || { active: 0, slots: [] }) };
-                    next.slots = next.slots.map((ss, idx) => idx === i ? { ...ss, max: Math.max(0, Number(e.target.value || 0)) } : ss);
-                    return { ...f, ammo: next };
-                  })}
-                />
-              </label>
-              <div className="md:col-span-4 text-sm">
-  <label className="text-sm">{t("slotNote")}</label>
-  <div className="mt-1 flex items-center gap-2">
-    <input
-      className={cx("flex-1 border rounded-md px-2 py-1.5",
-        isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
-      value={s.note || ""}
-      onChange={(e) => setForm((f) => {
-        const next = { ...(f.ammo || { active: 0, slots: [] }) };
-        next.slots = next.slots.map((ss, idx) => idx === i ? { ...ss, note: e.target.value } : ss);
-        return { ...f, ammo: next };
-      })}
-    />
-    <button
-      type="button"
-      className={cx("shrink-0 px-3 py-1.5 text-xs rounded-md border",
-        isDark ? "bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-red-400 hover:text-red-300" : "bg-white border-slate-300 hover:bg-slate-50 text-red-600")}
-      onClick={() => setForm((f) => {
-        const next = { ...(f.ammo || { active: 0, slots: [] }) };
-        const before = next.slots || [];
-        const newSlots = before.filter((_, idx) => idx !== i);
-        const newActive = Math.min(Math.max(0, (next.active || 0) - (i <= (next.active || 0) ? 1 : 0)), Math.max(0, newSlots.length - 1));
-        return { ...f, ammo: { active: newActive, slots: newSlots } };
-      })}
-      title={t("remove")}
-    >
-      {t("remove")}
-    </button>
-  </div>
-</div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-xs opacity-70">{t("noSlotsYet")}</div>
-      )}
-    </div>
-  </>
-)}
+                {/* Ammo Slots Editor */}
+                <div className={cx("rounded-lg p-3 grid gap-3",
+                  isDark ? "border border-zinc-800" : "border border-slate-200")}>
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-medium">{t("ammoSlots")}</div>
+                    <button
+                      type="button"
+                      className={cx("px-2 py-1 text-xs rounded-md border",
+                        isDark ? "bg-zinc-900 border-zinc-700 hover:bg-zinc-800" : "bg-white border-slate-300 hover:bg-slate-50")}
+                      onClick={() => setForm((f) => {
+                        const next = { ...(f.ammo || { active: 0, slots: [] }) };
+                        next.slots = [...(next.slots || []), { type: "Comum", current: 0, max: 0, note: "" }];
+                        if (typeof next.active !== "number") next.active = 0;
+                        return { ...f, ammo: next };
+                      })}
+                    >
+                      {t("addSlot")}
+                    </button>
+                  </div>
+
+                  {Array.isArray(form?.ammo?.slots) && form.ammo.slots.length > 0 ? (
+                    <div className="grid gap-2">
+                      {form.ammo.slots.map((s, i) => (
+                        <div key={i} className="grid md:grid-cols-12 gap-2 items-end">
+                          <label className="text-[12px] md:col-span-1 flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name="activeAmmoEditor"
+                              checked={Number(form?.ammo?.active || 0) === i}
+                              onChange={() => setForm((f) => ({ ...f, ammo: { ...(f.ammo || { active: 0, slots: [] }), active: i } }))}
+                            />
+                            <span className="opacity-70">{t("active")}</span>
+                          </label>
+                          <label className="text-sm md:col-span-3">
+                            {t("type")}
+                            <input
+                              className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                                isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                              value={s.type || ""}
+                              onChange={(e) => setForm((f) => {
+                                const next = { ...(f.ammo || { active: 0, slots: [] }) };
+                                next.slots = next.slots.map((ss, idx) => idx === i ? { ...ss, type: e.target.value } : ss);
+                                return { ...f, ammo: next };
+                              })}
+                            />
+                          </label>
+                          <label className="text-sm md:col-span-2">
+                            {t("current")}
+                            <input
+                              type="number" min={0}
+                              className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                                isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                              value={Number(s.current || 0)}
+                              onChange={(e) => setForm((f) => {
+                                const next = { ...(f.ammo || { active: 0, slots: [] }) };
+                                next.slots = next.slots.map((ss, idx) => idx === i ? { ...ss, current: Math.max(0, Number(e.target.value || 0)) } : ss);
+                                return { ...f, ammo: next };
+                              })}
+                            />
+                          </label>
+                          <label className="text-sm md:col-span-2">
+                            {t("max")}
+                            <input
+                              type="number" min={0}
+                              className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                                isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                              value={Number(s.max || 0)}
+                              onChange={(e) => setForm((f) => {
+                                const next = { ...(f.ammo || { active: 0, slots: [] }) };
+                                next.slots = next.slots.map((ss, idx) => idx === i ? { ...ss, max: Math.max(0, Number(e.target.value || 0)) } : ss);
+                                return { ...f, ammo: next };
+                              })}
+                            />
+                          </label>
+                          <div className="md:col-span-4 text-sm">
+                            <label className="text-sm">{t("slotNote")}</label>
+                            <div className="mt-1 flex items-center gap-2">
+                              <input
+                                className={cx("flex-1 border rounded-md px-2 py-1.5",
+                                  isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                                value={s.note || ""}
+                                onChange={(e) => setForm((f) => {
+                                  const next = { ...(f.ammo || { active: 0, slots: [] }) };
+                                  next.slots = next.slots.map((ss, idx) => idx === i ? { ...ss, note: e.target.value } : ss);
+                                  return { ...f, ammo: next };
+                                })}
+                              />
+                              <button
+                                type="button"
+                                className={cx("shrink-0 px-3 py-1.5 text-xs rounded-md border",
+                                  isDark ? "bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-red-400 hover:text-red-300" : "bg-white border-slate-300 hover:bg-slate-50 text-red-600")}
+                                onClick={() => setForm((f) => {
+                                  const next = { ...(f.ammo || { active: 0, slots: [] }) };
+                                  const before = next.slots || [];
+                                  const newSlots = before.filter((_, idx) => idx !== i);
+                                  const newActive = Math.min(Math.max(0, (next.active || 0) - (i <= (next.active || 0) ? 1 : 0)), Math.max(0, newSlots.length - 1));
+                                  return { ...f, ammo: { active: newActive, slots: newSlots } };
+                                })}
+                                title={t("remove")}
+                              >
+                                {t("remove")}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs opacity-70">{t("noSlotsYet")}</div>
+                  )}
+                </div>
+              </>
+            )}
 
 
             {form.category === "dice" && (

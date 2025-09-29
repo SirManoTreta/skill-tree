@@ -16,7 +16,7 @@ export default function EquipmentPage({ isDark }) {
   });
 
   useEffect(() => {
-    try { localStorage.setItem(INVENTORY_KEY, JSON.stringify(items)); } catch {}
+    try { localStorage.setItem(INVENTORY_KEY, JSON.stringify(items)); } catch { }
   }, [items]);
 
   return (
