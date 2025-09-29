@@ -2,6 +2,7 @@
 import React from "react";
 import { cx, getLabel } from "../utils/misc";
 import { ITEM_CATEGORIES, ARMOR_TYPES } from "../constants/dnd";
+import CurrencyPurse from "./CurrencyPurse";
 
 /** Pequenos ícones SVG como placeholders */
 function Icon({ kind = "misc", className = "" }) {
@@ -335,6 +336,10 @@ export default function EquipmentGrid({ items, setItems, isDark }) {
               </div>
             );
           })}
+        </div>
+
+        <div className="mb-3">
+          <CurrencyPurse isDark={isDark} compact />
         </div>
 
         <div className={cx("text-xs mt-3", isDark ? "text-zinc-400" : "text-gray-600")}>

@@ -3,6 +3,7 @@ import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY } from "../constants/s
 import { ITEM_CATEGORIES, ARMOR_TYPES } from "../constants/dnd";
 import { cx, uid, parseTags, formatTags, getLabel, download } from "../utils/misc";
 import { t, getLang, setLang } from "../utils/i18n";
+import CurrencyPurse from "./CurrencyPurse";
 
 const currencyToGp = (value, unit) => {
   const v = Number(value || 0);
@@ -1112,6 +1113,12 @@ function InventoryManager({ isDark, onExportToTree }) {
           <div><span className="opacity-70">{t("totalValue")}:</span> <strong>{gpToPretty(totals.totalGp)}</strong></div>
         </div>
       </div>
+
+      {/* Moedas */}
+      <div className="px-3 pb-4">
+        <CurrencyPurse isDark={isDark} />
+      </div>
+
 
       {/* Lista */}
       <div className="px-3 pb-6 overflow-auto">

@@ -4,6 +4,11 @@ import { LANGUAGE_KEY } from "../constants/storage";
 const dict = {
   pt: {
     // PT-BR
+    coins: "Moedas",
+    platinum: "Platina",
+    gold: "Ouro",
+    silver: "Prata",
+    copper: "Cobre",
     inventory: "Inventário",
     equipment: "Equipamento",
     exportAll: "Exportar Tudo",
@@ -196,6 +201,11 @@ const dict = {
   },
   en: {
     // EN
+    coins: "Coins",
+    platinum: "Platinum",
+    gold: "Gold",
+    silver: "Silver",
+    copper: "Copper",
     inventory: "Inventory",
     equipment: "Equipment",
     classTitle: "Class",
