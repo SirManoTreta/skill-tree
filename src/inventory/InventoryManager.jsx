@@ -636,6 +636,7 @@ const filtered = useMemo(() => {
                   {ITEM_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
                 {t("tagsComma")}
+
                 <label className="text-sm">
   Tags
   <div
@@ -703,6 +704,15 @@ const filtered = useMemo(() => {
     />
   </div>
 </label>
+=======
+                <input
+                  className={cx("mt-1 w-full border rounded-md px-2 py-1.5",
+                    isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                  value={Array.isArray(form.tags) ? formatTags(form.tags) : form.tags}
+                  onChange={(e) => setForm((f) => ({ ...f, tags: parseTags(e.target.value) }))}
+                  placeholder="mágico, prata, sagrado"
+                />
+
               </label>
 
               <label className="text-sm">
