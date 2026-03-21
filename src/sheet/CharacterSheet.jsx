@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { SHEET_KEY } from "../constants/storage";
+import { SHEET_KEY, INVENTORY_KEY, WALLET_KEY, STORAGE_KEYS, PROGRESSION_KEY } from "../constants/storage";
 import { cx, download } from "../utils/misc";
+import { readJson, readFirstJson } from "../shared/storage/localStorage";
 import { t } from "../utils/i18n";
 
 const ABIL_KEYS = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
@@ -36,7 +37,14 @@ const emptyOrigin = () => ({
   skills: Object.fromEntries(SKILLS.map(s => [s.id, 0])),
 });
 
-const defaultSheet = {
+const createDefaultSheet = () => ({
+  identity: {
+    name: "",
+    player: "",
+    campaign: "",
+    classLine: "",
+    biography: "",
+  },
   abilities: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 },
   prof: 2,
   saves: { STR: 0, DEX: 0, CON: 0, INT: 0, WIS: 0, CHA: 0 },
@@ -50,15 +58,15 @@ const defaultSheet = {
     background: emptyOrigin(),
     class: emptyOrigin(),
   },
-};
+});
 
 export default function CharacterSheet({ isDark }) {
   const [sheet, setSheet] = useState(() => {
     try {
       const raw = localStorage.getItem(SHEET_KEY);
-      return raw ? { ...defaultSheet, ...JSON.parse(raw) } : defaultSheet;
+      return raw ? { ...createDefaultSheet(), ...JSON.parse(raw) } : createDefaultSheet();
     } catch {
-      return defaultSheet;
+      return createDefaultSheet();
     }
   });
 
@@ -86,7 +94,7 @@ export default function CharacterSheet({ isDark }) {
     reader.onload = () => {
       try {
         const parsed = JSON.parse(reader.result);
-        setSheet({ ...defaultSheet, ...parsed });
+        setSheet({ ...createDefaultSheet(), ...parsed });
         alert("Ficha importada com sucesso!");
       } catch {
         alert("JSON inválido para a ficha.");
@@ -98,29 +106,32 @@ export default function CharacterSheet({ isDark }) {
   const clearSheet = () => {
     if (!confirm("Apagar todos os dados da Ficha?")) return;
     try { localStorage.removeItem(SHEET_KEY); } catch {}
-    setSheet(defaultSheet);
+    setSheet(createDefaultSheet());
   };
 
-  // Exportar Tudo: tenta pegar árvore/inventário por chaves conhecidas e também inclui TODO o localStorage como fallback.
+  // Exportar Tudo: usa as chaves reais do app e ainda inclui um snapshot do localStorage.
   const exportAllJSON = async () => {
-    // Best effort: tenta usar chaves conhecidas se existirem
-    let bundle = { tree: {}, sheet: null, inventory: { items: [] }, meta: { exportedAt: new Date().toISOString() } };
-    try { bundle.sheet = JSON.parse(localStorage.getItem(SHEET_KEY) || "null"); } catch {}
-    // Inventário
-    try { 
-      const invKey = (window.HABILITY_INVENTORY_KEY) || (window.INVENTORY_KEY) || null;
-      const guess = invKey ? localStorage.getItem(invKey) : null;
-      const byConst = guess ? JSON.parse(guess) : null;
-      bundle.inventory.items = Array.isArray(byConst) ? byConst : (JSON.parse(localStorage.getItem("INVENTORY_KEY") || "[]"));
-    } catch { /* ignore */ }
-    // Árvore (tentativas)
-    try {
-      const nodes = JSON.parse(localStorage.getItem("TREE_NODES") || "[]");
-      const edges = JSON.parse(localStorage.getItem("TREE_EDGES") || "[]");
-      bundle.tree = { nodes, edges };
-    } catch { /* ignore */ }
+    const tree = readFirstJson(STORAGE_KEYS, { nodes: [], edges: [] }) || { nodes: [], edges: [] };
+    const inventory = readJson(INVENTORY_KEY, []);
+    const wallet = readJson(WALLET_KEY, { pp: 0, gp: 0, sp: 0, cp: 0 });
+    const progression = readJson(PROGRESSION_KEY, { classes: [], history: [], customCards: [] });
 
-    // Fallback: captura TODO localStorage também
+    const bundle = {
+      tree: {
+        nodes: Array.isArray(tree?.nodes) ? tree.nodes : [],
+        edges: Array.isArray(tree?.edges) ? tree.edges : [],
+      },
+      sheet,
+      inventory: { items: Array.isArray(inventory) ? inventory : [] },
+      wallet,
+      progression,
+      meta: {
+        exportedAt: new Date().toISOString(),
+        source: "hability-sheet",
+        version: 2,
+      },
+    };
+
     const all = {};
     try {
       for (let i = 0; i < localStorage.length; i++) {
@@ -132,7 +143,7 @@ export default function CharacterSheet({ isDark }) {
     bundle.__allLocalStorage = all;
 
     await download(
-      `hability-all-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`,
+      `hability-sheet-backup-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`,
       JSON.stringify(bundle, null, 2),
       "application/json"
     );
@@ -317,6 +328,63 @@ export default function CharacterSheet({ isDark }) {
         >
           {t("exportAll") || "Exportar Tudo"}
         </button>
+      </div>
+
+      <div className={cx(
+        "mb-3 rounded-2xl border p-3 md:p-4",
+        isDark ? "bg-zinc-950 border-zinc-800" : "bg-white border-slate-200"
+      )}>
+        <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-sm">
+              <div className="mb-1 font-medium">Personagem</div>
+              <input
+                className={cx("w-full rounded-xl border px-3 py-2", isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                value={sheet.identity?.name || ""}
+                onChange={(e) => setSheet((s) => ({ ...s, identity: { ...(s.identity || {}), name: e.target.value } }))}
+                placeholder="Ex.: Renn Marik"
+              />
+            </label>
+            <label className="text-sm">
+              <div className="mb-1 font-medium">Jogador</div>
+              <input
+                className={cx("w-full rounded-xl border px-3 py-2", isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                value={sheet.identity?.player || ""}
+                onChange={(e) => setSheet((s) => ({ ...s, identity: { ...(s.identity || {}), player: e.target.value } }))}
+                placeholder="Ex.: Samuel"
+              />
+            </label>
+            <label className="text-sm">
+              <div className="mb-1 font-medium">Campanha</div>
+              <input
+                className={cx("w-full rounded-xl border px-3 py-2", isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                value={sheet.identity?.campaign || ""}
+                onChange={(e) => setSheet((s) => ({ ...s, identity: { ...(s.identity || {}), campaign: e.target.value } }))}
+                placeholder="Ex.: Ilha da Morte"
+              />
+            </label>
+            <label className="text-sm">
+              <div className="mb-1 font-medium">Classe / Níveis</div>
+              <input
+                className={cx("w-full rounded-xl border px-3 py-2", isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+                value={sheet.identity?.classLine || ""}
+                onChange={(e) => setSheet((s) => ({ ...s, identity: { ...(s.identity || {}), classLine: e.target.value } }))}
+                placeholder="Ex.: Guerreiro 5 / Bruxo 2"
+              />
+            </label>
+          </div>
+
+          <label className="text-sm">
+            <div className="mb-1 font-medium">Biografia / Notas</div>
+            <textarea
+              rows={5}
+              className={cx("w-full rounded-xl border px-3 py-2", isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-300")}
+              value={sheet.identity?.biography || ""}
+              onChange={(e) => setSheet((s) => ({ ...s, identity: { ...(s.identity || {}), biography: e.target.value } }))}
+              placeholder="Resumo do personagem, traços, objetivos, marcas narrativas e tudo o que mereça virar card mais tarde."
+            />
+          </label>
+        </div>
       </div>
 
       <div className="grid gap-2 md:gap-3 lg:grid-cols-12">

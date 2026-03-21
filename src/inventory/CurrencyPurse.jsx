@@ -1,20 +1,15 @@
 // src/inventory/CurrencyPurse.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { WALLET_KEY } from "../constants/storage";
+import { readJson, writeJson } from "../shared/storage/localStorage";
 import { cx } from "../utils/misc";
 import { t } from "../utils/i18n";
 
 export default function CurrencyPurse({ isDark, compact = false, className = "" }) {
-  const [wallet, setWallet] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(WALLET_KEY)) || { pp: 0, gp: 0, sp: 0, cp: 0 };
-    } catch {
-      return { pp: 0, gp: 0, sp: 0, cp: 0 };
-    }
-  });
+  const [wallet, setWallet] = useState(() => readJson(WALLET_KEY, { pp: 0, gp: 0, sp: 0, cp: 0 }));
 
   useEffect(() => {
-    try { localStorage.setItem(WALLET_KEY, JSON.stringify(wallet)); } catch {}
+    writeJson(WALLET_KEY, wallet);
   }, [wallet]);
 
   const totalGp = useMemo(() =>

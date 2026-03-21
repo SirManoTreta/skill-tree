@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import { STORAGE_KEYS, THEME_KEY, PAGE_KEY, INVENTORY_KEY } from "../constants/storage";
+import { STORAGE_KEYS, INVENTORY_KEY } from "../constants/storage";
 import { ITEM_CATEGORIES, ARMOR_TYPES } from "../constants/dnd";
 import { cx, uid, parseTags, formatTags, getLabel, download } from "../utils/misc";
 import { t, getLang, setLang } from "../utils/i18n";
 import CurrencyPurse from "./CurrencyPurse";
+import { readJson, writeJson } from "../shared/storage/localStorage";
 
 const currencyToGp = (value, unit) => {
   const v = Number(value || 0);
@@ -23,14 +24,7 @@ const gpToPretty = (gp) => {
 };
 
 function InventoryManager({ isDark, onExportToTree }) {
-  const [items, setItems] = useState(() => {
-    try {
-      const raw = localStorage.getItem(INVENTORY_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [items, setItems] = useState(() => readJson(INVENTORY_KEY, []));
 
   const [filterText, setFilterText] = useState("");
   const [filterCat, setFilterCat] = useState("all");
@@ -105,7 +99,7 @@ function InventoryManager({ isDark, onExportToTree }) {
   const [showEditor, setShowEditor] = useState(false);
 
   useEffect(() => {
-    try { localStorage.setItem(INVENTORY_KEY, JSON.stringify(items)); } catch { }
+    writeJson(INVENTORY_KEY, items);
   }, [items]);
 
   const openNew = () => { setForm(emptyForm); setShowEditor(true); window.scrollTo({ top: 0, behavior: "smooth" }); };
@@ -591,7 +585,7 @@ function InventoryManager({ isDark, onExportToTree }) {
             {t("importInventory")}
             <input type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importJSON(e.target.files[0])} />
           </label>
-          <button onClick={exportToTree} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">{t("sendToTree")}</button>
+          <button onClick={exportToTree} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">{t("sendToLegacyTree") || t("sendToTree")}</button>
           <button
             onClick={bulkDelete}
             disabled={!selectedIds.length}
@@ -1118,7 +1112,6 @@ function InventoryManager({ isDark, onExportToTree }) {
       <div className="px-3 pb-4">
         <CurrencyPurse isDark={isDark} />
       </div>
-
 
       {/* Lista */}
       <div className="px-3 pb-6 overflow-auto">

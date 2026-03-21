@@ -28,6 +28,7 @@ const dict = {
     tempHp: "Temp.",
     initiativeAlert: "Alerta (+Prof. na Iniciativa)",
     sheet: "Ficha",
+    progression: "Progressão",
     proficiencyBonus: "Bônus de Proficiência",
     savingThrowsTitle: "Salvaguardas",
     savingThrowOf: "{{abl}}",
@@ -128,6 +129,7 @@ const dict = {
     exportInventory: "Exportar JSON",
     importInventory: "Importar JSON",
     sendToTree: "Enviar para a Árvore",
+    sendToLegacyTree: "Enviar para a Árvore (legado)",
     deleteSelected: "Apagar selecionados",
     searchInventory: "Buscar no inventário...",
     allCategories: "Todas categorias",
@@ -231,6 +233,7 @@ const dict = {
     damage: "Damage",
     heal: "Heal",
     sheet: "Sheet",
+    progression: "Progression",
     proficiencyBonus: "Proficiency Bonus",
     savingThrowsTitle: "Saving Throws",
     savingThrowOf: "{{abl}}",
@@ -331,6 +334,7 @@ const dict = {
     exportInventory: "Export JSON",
     importInventory: "Import JSON",
     sendToTree: "Send to Tree",
+    sendToLegacyTree: "Send to Tree (legacy)",
     deleteSelected: "Delete selected",
     searchInventory: "Search inventory...",
     allCategories: "All categories",
@@ -403,10 +407,11 @@ export function getLang() {
   try { return localStorage.getItem(LANGUAGE_KEY) || "pt"; } catch { return "pt"; }
 }
 
+export const LANGUAGE_CHANGE_EVENT = "hability-language-change";
+
 export function setLang(lang) {
   try { localStorage.setItem(LANGUAGE_KEY, lang); } catch { }
-  // suggestion: force a soft reload so all components pick new literals without context
-  try { location.reload(); } catch { }
+  try { window.dispatchEvent(new CustomEvent(LANGUAGE_CHANGE_EVENT, { detail: lang })); } catch { }
 }
 
 export function t(key, params) {
