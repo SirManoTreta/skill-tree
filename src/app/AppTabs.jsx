@@ -10,13 +10,13 @@ const TABS = [
 
 export default function AppTabs({ page, setPage, isDark }) {
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="order-3 sm:order-none w-full sm:w-auto flex items-center gap-2 overflow-x-auto">
       {TABS.map((tab) => (
         <button
           key={tab.id}
           onClick={() => setPage(tab.id)}
           className={cx(
-            "px-3 py-1.5 rounded-lg border shadow",
+            "shrink-0 px-3 py-1.5 rounded-lg border shadow",
             page === tab.id
               ? "bg-indigo-600 text-white border-indigo-600"
               : isDark

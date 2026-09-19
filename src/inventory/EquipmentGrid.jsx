@@ -1,5 +1,7 @@
 // src/inventory/EquipmentGrid.jsx
 import React from "react";
+import { canDropInSlot, equipItem, EQUIPMENT_SLOTS } from "./equipment";
+import { t } from "../utils/i18n";
 import { cx, getLabel } from "../utils/misc";
 import { ITEM_CATEGORIES, ARMOR_TYPES } from "../constants/dnd";
 import CurrencyPurse from "./CurrencyPurse";
@@ -47,27 +49,6 @@ function Icon({ kind = "misc", className = "" }) {
           <rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor" />
         </svg>
       );
-  }
-}
-
-/** Regras simples de compatibilidade item → slot */
-function canDropInSlot(item, slotId) {
-  if (!item) return false;
-  const tagMatch = (rx) => Array.isArray(item.tags) && item.tags.some(t => rx.test(String(t)));
-  const is = (cat) => (item.category || "") === cat;
-
-  switch (slotId) {
-    case "weaponMain": return tagMatch(/weapon|arma/i);//is("weapon");
-    case "offhand": return tagMatch(/shield|escudo|arma/i);//is("weapon") || (is("armor") && item.armorType === "shield");
-    case "armorChest": return tagMatch(/armadura|armor|roupa/i);//is("armor") && item.armorType !== "shield";
-    case "helmet": return tagMatch(/helm|helmet|capacete|chapéu|chapeu/i);
-    case "gloves": return tagMatch(/glove|gauntlet|luva|manopla|braçadeira/i);
-    case "boots": return tagMatch(/boot|bota|sapato/i);
-    case "belt": return tagMatch(/belt|cinto/i);
-    case "amulet": return tagMatch(/amulet|amuleto/i) || (is("misc") && tagMatch(/amulet|amuleto/i));
-    case "ring1":
-    case "ring2": return tagMatch(/ring|anel|aliança/i) || (is("misc") && tagMatch(/ring|anel/i));
-    default: return false;
   }
 }
 
@@ -157,21 +138,7 @@ function summarize(it) {
 export default function EquipmentGrid({ items, setItems, isDark }) {
   const occ = useOccupants(items);
 
-  const slots = [
-    // linha 1
-    { id: "helmet", label: "Cabeça" },
-    { id: "amulet", label: "Amuleto" },
-    { id: "ring1", label: "Anel 1" },
-    { id: "ring2", label: "Anel 2" },
-    // linha 2
-    { id: "weaponMain", label: "Arma" },
-    { id: "armorChest", label: "Peitoral" },
-    { id: "offhand", label: "Mão Sec." },
-    { id: "belt", label: "Cinto" },
-    // linha 3
-    { id: "gloves", label: "Luvas" },
-    { id: "boots", label: "Botas" },
-  ];
+  const slots = EQUIPMENT_SLOTS.map(id => ({ id, label: t("slots." + id) }));
 
   const wrap = cx(
     "rounded-2xl border p-3 mb-3",
@@ -199,21 +166,9 @@ export default function EquipmentGrid({ items, setItems, isDark }) {
     const id = e.dataTransfer.getData("text/hability-item");
     if (!id) return;
 
-    setItems(arr => {
-      const item = arr.find(x => x.id === id);
-      if (!item) return arr;
-
-      if (!canDropInSlot(item, slotId)) {
-        alert("Esse item não pode ser equipado nesse slot.");
-        return arr;
-      }
-
-      // Libera quem estiver no slot de destino
-      let next = arr.map(x => (x.slot === slotId ? { ...x, slot: null, equipped: false } : x));
-      // Tira o item do slot anterior e equipa no novo
-      next = next.map(x => (x.id === id ? { ...x, slot: slotId, equipped: true } : x));
-      return next;
-    });
+    const item = items.find(entry => entry.id === id);
+    if (!canDropInSlot(item, slotId)) { alert(t('invalidSlot')); return; }
+    setItems(arr => equipItem(arr, id, slotId));
   };
 
   /** Permite arrastar o item já equipado (para trocar de slot rapidamente) */
@@ -229,10 +184,10 @@ export default function EquipmentGrid({ items, setItems, isDark }) {
 
   return (
     <div className={wrap} style={{ overflow: "visible" }}>
-      <div className="mb-2 font-semibold">Equipamentos</div>
+      <div className="mb-2 font-semibold">{t("equipment")}</div>
 
       {/* Slots equipáveis */}
-      <div className="grid gap-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
         {slots.map(s => {
           const it = occ[s.id];
           const hasImg = it?.imageUrl;
@@ -243,6 +198,7 @@ export default function EquipmentGrid({ items, setItems, isDark }) {
                 onDragOver={dropOver}
                 onDrop={(e) => onDropSlot(e, s.id)}
                 title={s.label}
+                draggable={Boolean(it)} onDragStart={e => it && dragFromSlot(e, it)}
               >
                 {it ? (
                   <>
@@ -257,7 +213,7 @@ export default function EquipmentGrid({ items, setItems, isDark }) {
                     <button
                       type="button"
                       onClick={() => unequipSlot(s.id)}
-                      title="Desequipar"
+                      title={t("unequip")} aria-label={t("unequip") + " " + it.name}
                       className={cx(
                         "absolute -top-2 -right-2 w-6 h-6 rounded-full grid place-items-center text-xs",
                         isDark ? "bg-zinc-800 border border-zinc-700 hover:bg-zinc-700" : "bg-white border border-slate-300 hover:bg-slate-100"
@@ -271,6 +227,7 @@ export default function EquipmentGrid({ items, setItems, isDark }) {
                 )}
               </div>
               <div className={cx("text-xs", isDark ? "text-zinc-400" : "text-gray-600")}>{s.label}</div>
+              {it && <div className="max-w-28 truncate text-xs" title={it.name}>{it.name}</div>}
             </div>
           );
         })}
@@ -278,12 +235,12 @@ export default function EquipmentGrid({ items, setItems, isDark }) {
 
       {/* Grid de não-equipados (mochila) */}
       <div className="mt-4">
-        <div className="mb-2 font-semibold">Mochila (não equipados)</div>
-        <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2" style={{ overflow: "visible" }}>
+        <div className="mb-2 font-semibold">{t("backpack")}</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3" style={{ overflow: "visible" }}>
           {backpack.length === 0 && (
             <div className={cx("col-span-full text-xs text-center py-6 rounded-md border",
               isDark ? "border-zinc-800 text-zinc-400" : "border-slate-200 text-gray-600")}>
-              Sem itens soltos. Adicione itens na lista abaixo e arraste para equipar.
+              {t("noBackpackItems")}
             </div>
           )}
 
@@ -317,10 +274,16 @@ export default function EquipmentGrid({ items, setItems, isDark }) {
                   )}
                 </div>
 
+                <div className="mt-1 text-xs truncate" title={it.name}>{it.name}</div>
+                <select aria-label={t('equip') + ' ' + it.name} value="" className={cx('mt-1 w-full min-w-0 rounded border p-1 text-xs', isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-slate-300')}
+                  onChange={e => setItems(arr => equipItem(arr, it.id, e.target.value))}>
+                  <option value="">{t('chooseSlot')}</option>
+                  {slots.filter(slot => canDropInSlot(it, slot.id)).map(slot => <option key={slot.id} value={slot.id}>{slot.label}</option>)}
+                </select>
                 {/* Tooltip (balão) */}
                 <div
                   className={cx(
-                    "hidden group-hover:block absolute z-20 w-64 p-2 rounded-lg border shadow-lg",
+                    "hidden group-hover:block group-focus-within:block absolute z-20 w-64 p-2 rounded-lg border shadow-lg",
                     isDark ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-slate-200 text-gray-800"
                   )}
                   style={{ top: -8, left: "50%", transform: "translate(-50%, -100%)" }}
@@ -343,9 +306,7 @@ export default function EquipmentGrid({ items, setItems, isDark }) {
         </div>
 
         <div className={cx("text-xs mt-3", isDark ? "text-zinc-400" : "text-gray-600")}>
-          Dica: você pode arrastar da mochila para os slots acima. Adicione <strong>tags</strong>
-          {" "}aos itens (ex.: <code>anel</code>, <code>amulet</code>, <code>capacete</code>, <code>luva</code>, <code>bota</code>, <code>cinto</code>)
-          para liberar mais tipos de slot.
+          {t("equipmentHint")}
         </div>
       </div>
     </div>

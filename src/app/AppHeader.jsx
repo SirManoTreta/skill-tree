@@ -1,3 +1,4 @@
+import { t } from '../utils/i18n';
 import AppTabs from "./AppTabs";
 import { cx } from "../utils/misc";
 
@@ -13,10 +14,10 @@ export default function AppHeader({
 }) {
   return (
     <div className="relative z-30 p-3 flex items-center gap-2 flex-wrap">
-      <div className="min-w-0 mr-2">
+      <div className="min-w-0 mr-2 flex-1 sm:flex-none">
         <div className="text-sm font-semibold">Hability Sheet</div>
-        <div className={cx("text-xs", isDark ? "text-zinc-400" : "text-slate-500")}>
-          Ficha, progressão em cards e inventário no mesmo lugar.
+        <div className={cx("hidden sm:block text-xs", isDark ? "text-zinc-400" : "text-slate-500")}>
+          {t("appSubtitle")}
         </div>
       </div>
 
@@ -33,10 +34,10 @@ export default function AppHeader({
             : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50"
         )}
       >
-        {theme === "dark" ? "🌙 Escuro" : "☀️ Claro"}
+        {theme === "dark" ? "🌙 " + t("dark") : "☀️ " + t("light")}
       </button>
 
-      <select
+      <select aria-label={t("language")}
         value={lang}
         onChange={(e) => setLang(e.target.value)}
         className={cx(

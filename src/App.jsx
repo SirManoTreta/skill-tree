@@ -4,7 +4,9 @@ import useLocalStorageState from "./shared/hooks/useLocalStorageState";
 import { LANGUAGE_KEY, PAGE_KEY, THEME_KEY } from "./constants/storage";
 import { cx } from "./utils/misc";
 import { readText } from "./shared/storage/localStorage";
-import { LANGUAGE_CHANGE_EVENT, setLang as applyLang } from "./utils/i18n";
+import { t, LANGUAGE_CHANGE_EVENT, setLang as applyLang } from "./utils/i18n";
+import CharacterToolbar from './character/CharacterToolbar';
+import { useCharacter } from './character/context';
 
 const CharacterSheet = lazy(() => import("./sheet/CharacterSheet"));
 const ProgressionPage = lazy(() => import("./progression/ProgressionPage"));
@@ -14,6 +16,7 @@ const EquipmentPage = lazy(() => import("./inventory/EquipmentPage"));
 const VALID_PAGES = new Set(["sheet", "progression", "inventory", "equipment"]);
 
 export default function App() {
+  const { systemId } = useCharacter();
   const prefersDark = () => window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
 
   const [theme, setTheme] = useLocalStorageState(
@@ -45,6 +48,8 @@ export default function App() {
     { serializer: String, parser: (value) => value || "pt" }
   );
 
+  useEffect(() => { document.documentElement.lang = lang === "en" ? "en" : "pt-BR"; }, [lang]);
+
   const isDark = theme === "dark";
 
   useEffect(() => {
@@ -64,7 +69,7 @@ export default function App() {
   }, [setLangState]);
 
   return (
-    <div className={cx("w-full h-screen flex flex-col", isDark ? "bg-zinc-900 text-zinc-100" : "bg-slate-50 text-slate-900")}>
+    <div className={cx("w-full h-dvh flex flex-col", isDark ? "bg-zinc-900 text-zinc-100" : "bg-slate-50 text-slate-900")}>
       <AppHeader
         page={page}
         setPage={setPage}
@@ -78,11 +83,13 @@ export default function App() {
         }}
       />
 
+      <CharacterToolbar isDark={isDark} />
+
       <div className="flex-1 min-h-0">
-        <Suspense
+        <Suspense key={systemId}
           fallback={
             <div className={cx("h-full grid place-items-center text-sm", isDark ? "text-zinc-400" : "text-slate-500")}>
-              Carregando…
+              {t("loading")}
             </div>
           }
         >

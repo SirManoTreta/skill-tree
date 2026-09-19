@@ -1,16 +1,11 @@
 // src/inventory/CurrencyPurse.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import { WALLET_KEY } from "../constants/storage";
-import { readJson, writeJson } from "../shared/storage/localStorage";
+import React, { useMemo } from "react";
+import { useCharacter } from "../character/context";
 import { cx } from "../utils/misc";
 import { t } from "../utils/i18n";
 
 export default function CurrencyPurse({ isDark, compact = false, className = "" }) {
-  const [wallet, setWallet] = useState(() => readJson(WALLET_KEY, { pp: 0, gp: 0, sp: 0, cp: 0 }));
-
-  useEffect(() => {
-    writeJson(WALLET_KEY, wallet);
-  }, [wallet]);
+  const { profile: { wallet }, setWallet } = useCharacter();
 
   const totalGp = useMemo(() =>
     Number(wallet.pp || 0) * 10 +
@@ -25,22 +20,10 @@ export default function CurrencyPurse({ isDark, compact = false, className = "" 
     className
   );
   const inputCls = cx(
-    "w-24 px-2 py-1.5 border rounded-md",
+    "w-20 min-w-0 px-2 py-1.5 border rounded-md",
     isDark ? "bg-zinc-900 border-zinc-700" : "bg-white border-slate-300"
   );
 
-  const Row = ({ id, label, suffix }) => (
-    <label className="flex items-center gap-2">
-      <span className="w-16 text-xs opacity-70">{label}</span>
-      <input
-        type="number" min="0" step="1" inputMode="numeric"
-        className={inputCls}
-        value={wallet[id] ?? 0}
-        onChange={(e) => setWallet((w) => ({ ...w, [id]: Math.max(0, Number(e.target.value || 0)) }))}
-      />
-      <span className="text-xs opacity-60">{suffix}</span>
-    </label>
-  );
 
   return (
     <div className={box} role="group" aria-label={t("coins") || "Moedas"}>
@@ -51,12 +34,25 @@ export default function CurrencyPurse({ isDark, compact = false, className = "" 
         </div>
       </div>
 
-      <div className={cx("grid gap-2", compact ? "grid-cols-2" : "grid-cols-4")}>
-        <Row id="pp" label={t("platinum") || "Platina"} suffix="pp" />
-        <Row id="gp" label={t("gold") || "Ouro"} suffix="gp" />
-        <Row id="sp" label={t("silver") || "Prata"} suffix="sp" />
-        <Row id="cp" label={t("copper") || "Cobre"} suffix="cp" />
+      <div className={cx("grid gap-2", compact ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 xl:grid-cols-4")}>
+        <CurrencyRow wallet={wallet} setWallet={setWallet} inputCls={inputCls} id="pp" label={t("platinum") || "Platina"} suffix="pp" />
+        <CurrencyRow wallet={wallet} setWallet={setWallet} inputCls={inputCls} id="gp" label={t("gold") || "Ouro"} suffix="gp" />
+        <CurrencyRow wallet={wallet} setWallet={setWallet} inputCls={inputCls} id="sp" label={t("silver") || "Prata"} suffix="sp" />
+        <CurrencyRow wallet={wallet} setWallet={setWallet} inputCls={inputCls} id="cp" label={t("copper") || "Cobre"} suffix="cp" />
       </div>
     </div>
   );
 }
+
+function CurrencyRow({ id, label, suffix, wallet, setWallet, inputCls }) { return (
+    <label className="flex items-center gap-2">
+      <span className="w-16 text-xs opacity-70">{label}</span>
+      <input
+        type="number" min="0" step="1" inputMode="numeric"
+        className={inputCls}
+        value={wallet[id] ?? 0}
+        onChange={(e) => setWallet((w) => ({ ...w, [id]: Math.max(0, Number(e.target.value || 0)) }))}
+      />
+      <span className="text-xs opacity-60">{suffix}</span>
+    </label>
+   ); }

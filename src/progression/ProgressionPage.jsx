@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from "react";
-import { PROGRESSION_KEY } from "../constants/storage";
+import { useCharacter } from "../character/context";
+import { defaultProgression, normalizeProgression, readImportFile } from "../character/schema";
 import { cx, download, uid } from "../utils/misc";
-import useLocalStorageState from "../shared/hooks/useLocalStorageState";
 import { CLASS_OPTIONS, getClassCards, getClassLabel } from "./catalog";
-import { getLang } from "../utils/i18n";
+import { t, getLang } from "../utils/i18n";
 
 const text = {
   pt: {
@@ -108,13 +108,6 @@ const text = {
   },
 };
 
-const createDefaultProgression = () => ({
-  version: 1,
-  classes: [],
-  history: [],
-  customCards: [],
-});
-
 const makeClassEntry = (classId) => ({
   id: uid(),
   classId,
@@ -137,18 +130,22 @@ const getCardsGrantedOnLevel = (classId, level) => getClassCards(classId).filter
 export default function ProgressionPage({ isDark }) {
   const lang = getLang() === "en" ? "en" : "pt";
   const copy = text[lang];
-  const [progression, setProgression] = useLocalStorageState(PROGRESSION_KEY, createDefaultProgression);
+  const { profile: { progression }, setProgression, systemId } = useCharacter();
+  const isOnePiece = systemId === "onePiece";
+  const [message, setMessage] = useState("");
   const [initialClass, setInitialClass] = useState(CLASS_OPTIONS[0].value);
   const [multiclassDraft, setMulticlassDraft] = useState(CLASS_OPTIONS[1].value);
   const [filter, setFilter] = useState("all");
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customForm, setCustomForm] = useState({ title: "", sourceLabel: "", description: "", kind: "biography" });
 
-  const classes = progression.classes || [];
-  const totalLevel = classes.reduce((sum, entry) => sum + Number(entry.level || 0), 0);
+  const classes = progression.classes;
+  const availableClasses = CLASS_OPTIONS.filter(option => !classes.some(entry => entry.classId === option.value));
+  const selectedMulticlass = availableClasses.some(option => option.value === multiclassDraft) ? multiclassDraft : availableClasses[0]?.value || "";
+  const totalLevel = isOnePiece ? progression.level || 1 : classes.reduce((sum, entry) => sum + Number(entry.level || 0), 0);
 
   const unlockedCards = useMemo(() => {
-    const builtIn = classes.flatMap((entry) =>
+    const builtIn = (isOnePiece ? [] : classes).flatMap((entry) =>
       getClassCards(entry.classId)
         .filter((card) => Number(card.level) <= Number(entry.level || 0))
         .map((card) => ({
@@ -168,7 +165,7 @@ export default function ProgressionPage({ isDark }) {
     }));
 
     return [...builtIn, ...custom];
-  }, [classes, progression.customCards]);
+  }, [classes, progression.customCards, isOnePiece]);
 
   const visibleCards = useMemo(() => {
     if (filter === "all") return unlockedCards;
@@ -181,13 +178,14 @@ export default function ProgressionPage({ isDark }) {
     setProgression({
       version: 1,
       classes: [makeClassEntry(initialClass)],
-      customCards: [],
+      customCards: progression.customCards,
       history: [createHistoryEntry(initialClass, 1, cards)],
     });
     setFilter("all");
   };
 
   const levelUpClass = (entryId) => {
+    if (totalLevel >= 20) return;
     setProgression((current) => {
       const classesList = (current.classes || []).map((entry) => {
         if (entry.id !== entryId) return entry;
@@ -206,14 +204,15 @@ export default function ProgressionPage({ isDark }) {
   };
 
   const addMulticlass = () => {
+    if (!selectedMulticlass || totalLevel >= 20) return;
     setProgression((current) => {
-      if ((current.classes || []).some((entry) => entry.classId === multiclassDraft)) return current;
-      const nextEntry = makeClassEntry(multiclassDraft);
-      const gainedCards = getCardsGrantedOnLevel(multiclassDraft, 1);
+      if ((current.classes || []).some((entry) => entry.classId === selectedMulticlass)) return current;
+      const nextEntry = makeClassEntry(selectedMulticlass);
+      const gainedCards = getCardsGrantedOnLevel(selectedMulticlass, 1);
       return {
         ...current,
         classes: [...(current.classes || []), nextEntry],
-        history: [createHistoryEntry(multiclassDraft, 1, gainedCards), ...(current.history || [])],
+        history: [createHistoryEntry(selectedMulticlass, 1, gainedCards), ...(current.history || [])],
       };
     });
   };
@@ -263,28 +262,18 @@ export default function ProgressionPage({ isDark }) {
     );
   };
 
-  const importProgression = (file) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(reader.result);
-        setProgression({
-          version: 1,
-          classes: Array.isArray(parsed?.classes) ? parsed.classes : [],
-          history: Array.isArray(parsed?.history) ? parsed.history : [],
-          customCards: Array.isArray(parsed?.customCards) ? parsed.customCards : [],
-        });
-      } catch {
-        alert(lang === "en" ? "Invalid progression JSON." : "JSON de progressão inválido.");
-      }
-    };
-    reader.readAsText(file);
+  const importProgression = async file => {
+    try {
+      const parsed = await readImportFile(file);
+      if (!Array.isArray(parsed.classes) || !Array.isArray(parsed.customCards)) throw new Error('Invalid progression');
+      setProgression(normalizeProgression(parsed)); setFilter('all'); setMessage(t('importSuccess'));
+    } catch (error) { setMessage(t('importFailed') + ' ' + error.message); }
   };
 
   const clearProgression = () => {
     const confirmed = window.confirm(lang === "en" ? "Clear all progression data?" : "Apagar todos os dados da progressão?");
     if (!confirmed) return;
-    setProgression(createDefaultProgression());
+    setProgression(defaultProgression());
     setFilter("all");
   };
 
@@ -295,29 +284,36 @@ export default function ProgressionPage({ isDark }) {
 
   return (
     <div className="w-full h-full overflow-auto p-2 sm:p-3">
+      {message && <p role="status" className="mb-3 text-sm">{message}</p>}
       <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
         <section className={cx(panelClass, "p-4 md:p-5") }>
           <div className="flex flex-wrap items-start gap-3 justify-between">
             <div>
-              <h1 className="text-lg md:text-xl font-semibold">{copy.title}</h1>
-              <p className={cx("text-sm mt-1 max-w-3xl", isDark ? "text-zinc-400" : "text-slate-600")}>{copy.subtitle}</p>
+              <h1 className="text-lg md:text-xl font-semibold">{isOnePiece ? t("manualProgression") : copy.title}</h1>
+              <p className={cx("text-sm mt-1 max-w-3xl", isDark ? "text-zinc-400" : "text-slate-600")}>{isOnePiece ? t("manualProgressionHint") : copy.subtitle}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button onClick={exportProgression} className="px-3 py-1.5 rounded-lg border">{copy.export}</button>
               <label className="px-3 py-1.5 rounded-lg border cursor-pointer">
                 {copy.import}
-                <input className="hidden" type="file" accept="application/json" onChange={(e) => e.target.files?.[0] && importProgression(e.target.files[0])} />
+                <input aria-label={copy.import} className="sr-only" type="file" accept="application/json" onChange={(e) => { const file=e.target.files?.[0]; e.target.value=""; if(file) importProgression(file); }} />
               </label>
               <button onClick={clearProgression} className="px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700">{copy.clear}</button>
             </div>
           </div>
 
-          {classes.length === 0 ? (
+          {isOnePiece ? (
+            <label className="block mt-4 text-sm">{t('level')}
+              <input aria-label={t('level')} className={cx('ml-3 w-24 rounded border p-2', isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-slate-300')}
+                type="number" min="1" max="100" value={progression.level || 1}
+                onChange={e => setProgression(current => ({ ...current, level: Math.max(1, Math.min(100, Math.floor(Number(e.target.value) || 1))) }))} />
+            </label>
+          ) : classes.length === 0 ? (
             <div className={cx("mt-4 rounded-2xl border p-4", isDark ? "border-zinc-800 bg-zinc-900/60" : "border-slate-200 bg-slate-50") }>
               <div className="font-medium">{copy.noClassTitle}</div>
               <p className={cx("text-sm mt-1", isDark ? "text-zinc-400" : "text-slate-600")}>{copy.noClassBody}</p>
               <div className="mt-4 flex flex-wrap gap-2 items-center">
-                <select value={initialClass} onChange={(e) => setInitialClass(e.target.value)} className={cx("px-3 py-2 rounded-lg border min-w-[220px]", isDark ? "bg-zinc-950 border-zinc-700 text-zinc-100" : "bg-white border-slate-300") }>
+                <select aria-label={copy.classes} value={initialClass} onChange={(e) => setInitialClass(e.target.value)} className={cx("px-3 py-2 rounded-lg border min-w-[220px]", isDark ? "bg-zinc-950 border-zinc-700 text-zinc-100" : "bg-white border-slate-300") }>
                   {CLASS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
                 <button onClick={beginProgression} className="px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">{copy.createCharacter}</button>
@@ -339,9 +335,13 @@ export default function ProgressionPage({ isDark }) {
                         <div className="flex items-center justify-between gap-2">
                           <div>
                             <div className="font-medium">{getClassLabel(entry.classId)}</div>
-                            <div className={cx("text-sm", isDark ? "text-zinc-400" : "text-slate-600")}>Nível {entry.level}</div>
+                            <div className={cx("text-sm", isDark ? "text-zinc-400" : "text-slate-600")}>{t("level")} {entry.level}</div>
                           </div>
-                          <button onClick={() => levelUpClass(entry.id)} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">{copy.levelUp}</button>
+                          <button disabled={totalLevel >= 20} onClick={() => levelUpClass(entry.id)} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">{copy.levelUp}</button>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <button disabled={entry.level <= 1} className="text-xs underline disabled:opacity-40" onClick={() => setProgression(current => ({ ...current, classes: current.classes.map(item => item.id === entry.id ? { ...item, level: Math.max(1, item.level - 1) } : item) }))}>{t('levelDown')}</button>
+                          <button className="text-xs underline" onClick={() => { if (window.confirm(t('removeClassConfirm'))) { setProgression(current => ({ ...current, classes: current.classes.filter(item => item.id !== entry.id) })); setFilter('all'); } }}>{t('removeClass')}</button>
                         </div>
                         <label className="block mt-3 text-sm">
                           <div className={cx("mb-1", isDark ? "text-zinc-300" : "text-slate-700")}>{copy.subclass}</div>
@@ -356,14 +356,14 @@ export default function ProgressionPage({ isDark }) {
                     ))}
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2 items-center">
-                    <select value={multiclassDraft} onChange={(e) => setMulticlassDraft(e.target.value)} className={cx("px-3 py-2 rounded-lg border min-w-[220px]", isDark ? "bg-zinc-950 border-zinc-700 text-zinc-100" : "bg-white border-slate-300") }>
+                    <select value={selectedMulticlass} aria-label={copy.addMulticlass} onChange={(e) => setMulticlassDraft(e.target.value)} className={cx("px-3 py-2 rounded-lg border min-w-[220px]", isDark ? "bg-zinc-950 border-zinc-700 text-zinc-100" : "bg-white border-slate-300") }>
                       {CLASS_OPTIONS.filter((option) => !classes.some((entry) => entry.classId === option.value)).map((option) => (
                         <option key={option.value} value={option.value}>{option.label}</option>
                       ))}
                     </select>
                     <button
                       onClick={addMulticlass}
-                      disabled={CLASS_OPTIONS.every((option) => classes.some((entry) => entry.classId === option.value))}
+                      disabled={!availableClasses.length || totalLevel >= 20}
                       className="px-3 py-2 rounded-lg border disabled:opacity-50"
                     >
                       {copy.addMulticlass}
@@ -442,6 +442,7 @@ export default function ProgressionPage({ isDark }) {
         </section>
       </div>
 
+      {!isOnePiece && <p className="mt-3 text-sm opacity-70">{t("catalogNotice")}</p>}
       <section className={cx(panelClass, "mt-3 p-4 md:p-5") }>
         <div className="flex items-center justify-between gap-2 mb-4">
           <h2 className="font-semibold">{copy.cards}</h2>

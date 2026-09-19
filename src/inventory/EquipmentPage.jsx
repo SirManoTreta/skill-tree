@@ -1,15 +1,10 @@
 // src/inventory/EquipmentPage.jsx
-import React, { useEffect, useState } from "react";
+import React from "react";
 import EquipmentGrid from "./EquipmentGrid";
-import { INVENTORY_KEY } from "../constants/storage";
-import { readJson, writeJson } from "../shared/storage/localStorage";
+import { useCharacter } from "../character/context";
 
 export default function EquipmentPage({ isDark }) {
-  const [items, setItems] = useState(() => readJson(INVENTORY_KEY, []));
-
-  useEffect(() => {
-    writeJson(INVENTORY_KEY, items);
-  }, [items]);
+  const { profile: { items }, setItems } = useCharacter();
 
   return (
     <div className="w-full h-full overflow-auto p-3">
