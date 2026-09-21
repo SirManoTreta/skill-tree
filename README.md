@@ -13,6 +13,8 @@ No modelo One Piece, História, Investigação, Medicina, Natureza e Sobrevivên
 
 O modelo reproduz os atributos e as perícias da referência; não é uma reprodução das quatro páginas do PDF nem uma implementação completa das regras de One Piece. A progressão de One Piece usa nível manual e cards customizados, sem liberar classes de D&D.
 
+Na página **Ficha**, a seção **Habilidades, técnicas e magias** permite adicionar, editar e remover cards próprios de cada personagem. Cada card contém nome, tipo, descrição, custo, alcance, dano, duração, requisito, grau, a marcação **Auxiliar** e um campo numérico de **Salvaguarda** dentro do octógono. Os campos são livres para as regras de cada mesa. Os cards são salvos automaticamente, separados por sistema, e incluídos na exportação da ficha e no backup completo.
+
 ## Salvamento e backups
 
 - Os dados antigos são carregados na ficha de D&D. As chaves antigas são preservadas; o novo documento usa `hability-characters-v3`.

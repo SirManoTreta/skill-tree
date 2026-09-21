@@ -7,6 +7,7 @@ import { readImportFile } from '../character/schema';
 import { armorClass } from '../inventory/equipment';
 import { getClassLabel } from '../progression/catalog';
 import { OriginsPanel, AbilityStat, KpiBox, SmallStepper, HPBox } from './SheetFields';
+import PowersSection from './PowersSection';
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 const mod = score => Math.floor((Number(score || 0) - 10) / 2);
 const fmt = n => n >= 0 ? '+' + n : String(n);
@@ -475,6 +476,7 @@ export default function CharacterSheet({ isDark }) {
           </div>
         </div>
       </div>
+      <PowersSection isDark={isDark} />
     </div>
   );
 }

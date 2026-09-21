@@ -38,6 +38,26 @@ function numberMap(value, defaults, path, min, max) {
 }
 const id = () => crypto.randomUUID();
 
+export function normalizePowers(value) {
+  const ids = new Set();
+  return list(value, 'Habilidades, técnicas e magias').map(raw => {
+    const entry = record(raw, 'Habilidade, técnica ou magia');
+    const entryId = string(entry.id, id());
+    if (!entryId.trim() || ids.has(entryId)) throw new Error('Habilidade com identificador vazio ou repetido.');
+    ids.add(entryId);
+    const kind = string(entry.kind, 'ability');
+    if (!['ability', 'technique', 'spell'].includes(kind)) throw new Error('Tipo de habilidade inválido.');
+    if (entry.auxiliary !== undefined && typeof entry.auxiliary !== 'boolean') throw new Error('Auxiliar: valor inválido.');
+    const saveValue = entry.saveValue === undefined ? '' : entry.saveValue;
+    if (saveValue !== '' && (typeof saveValue !== 'number' || !Number.isFinite(saveValue))) {
+      throw new Error('Salvaguarda: número inválido.');
+    }
+    return { id: entryId, kind, auxiliary: entry.auxiliary === true, saveValue,
+      ...Object.fromEntries(['name', 'cost', 'range', 'damage', 'duration', 'requirement', 'description', 'grade']
+        .map(key => [key, string(entry[key])])) };
+  });
+}
+
 export function normalizeSheet(value, systemId = 'dnd') {
   const source = record(value, 'Ficha');
   if (!SHEET_SYSTEMS[systemId] || (source.systemId && source.systemId !== systemId)) throw new Error('Tipo de ficha incompatível.');
@@ -51,6 +71,7 @@ export function normalizeSheet(value, systemId = 'dnd') {
     abilities: numberMap(source.abilities, base.abilities, 'Atributos', 1, 30),
     saves: numberMap(source.saves, base.saves, 'Salvaguardas', 0, 9),
     skills: numberMap(source.skills, base.skills, 'Perícias', 0, 9),
+    powers: normalizePowers(source.powers),
     prof: number(source.prof, base.prof, 'Proficiência', 1, 10),
     ac: number(source.ac, base.ac, 'CA', 0, 100),
     speed: string(source.speed, base.speed),

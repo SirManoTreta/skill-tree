@@ -40,6 +40,7 @@ export const emptyOrigin = (systemId = 'dnd') => ({
 export const createDefaultSheet = (systemId = 'dnd') => ({
   systemId,
   identity: { name: '', player: '', campaign: '', classLine: '', biography: '' },
+  powers: [],
   abilities: Object.fromEntries(getSystem(systemId).abilities.map(key => [key, 10])),
   saves: Object.fromEntries(getSystem(systemId).abilities.map(key => [key, 0])),
   skills: Object.fromEntries(getSystem(systemId).skills.map(({ id }) => [id, 0])),
